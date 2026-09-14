@@ -895,25 +895,8 @@
   });
 
   // --- Rutina (privada por cuenta, editable — nada de esto se comparte entre usuarios) ---
-  const DEFAULT_ROUTINE = {
-    espalda: [
-      { name: 'Jalón al pecho (cable)', sets: [{weight:40,reps:10},{weight:45,reps:10},{weight:45,reps:8},{weight:45,reps:6}] },
-      { name: 'Remo iso-lateral', sets: [{weight:30,reps:12},{weight:40,reps:10},{weight:40,reps:10},{weight:40,reps:10}] },
-      { name: 'Remo con mancuerna', sets: [{weight:17.5,reps:12},{weight:17.5,reps:12},{weight:20,reps:12}] },
-      { name: 'Curl martillo (mancuerna)', sets: [{weight:10,reps:10},{weight:10,reps:10},{weight:10,reps:10},{weight:10,reps:6}] },
-      { name: 'Curl predicador (barra)', sets: [{weight:15,reps:12},{weight:20,reps:12},{weight:20,reps:12},{weight:20,reps:12}] },
-      { name: 'Curl de bíceps inclinado (mancuerna)', sets: [{weight:10,reps:10},{weight:10,reps:10},{weight:10,reps:10}] },
-    ],
-    piernas: [
-      { name: 'Curl piernas acostado (máquina)', sets: [{weight:30,reps:12},{weight:40,reps:12},{weight:40,reps:8},{weight:40,reps:8}] },
-      { name: 'Extensión de pierna', sets: [{weight:35,reps:12},{weight:50,reps:12},{weight:60,reps:12}] },
-      { name: 'Sentadilla hack', sets: [{weight:60,reps:10},{weight:80,reps:10},{weight:80,reps:10},{weight:80,reps:10}] },
-      { name: 'Elevación de gemelos de pie (Smith)', sets: [{weight:80,reps:15},{weight:80,reps:15},{weight:80,reps:15},{weight:80,reps:15}] },
-      { name: 'Empuje de caderas (barra)', sets: [{weight:60,reps:10},{weight:60,reps:12},{weight:70,reps:12},{weight:70,reps:12}] },
-    ],
-    pecho: [],
-  };
-
+  // Sin datos de ejemplo precargados: cada cuenta arranca vacía y carga sus propios
+  // ejercicios. Lo único "de fábrica" es el estado vacío que ya muestra renderRoutine().
   let currentRoutineDay = 'espalda';
 
   function routineKey(day) { return 'bitacora:routine:' + day; }
@@ -923,7 +906,7 @@
       const raw = localStorage.getItem(routineKey(day));
       if (raw !== null) return JSON.parse(raw);
     } catch (e) {}
-    return JSON.parse(JSON.stringify(DEFAULT_ROUTINE[day] || []));
+    return [];
   }
 
   function persistRoutine(day, exercises) {
@@ -1020,15 +1003,16 @@
   renderRoutine('espalda');
 
   // --- Perfil (privado por cuenta: peso, altura, objetivo) ---
+  // Sin datos de ejemplo: si nadie cargó nada todavía, loadProfile() devuelve null y la UI
+  // muestra placeholders invitando a completar el perfil — nunca datos de otra persona.
   const PROFILE_KEY = 'bitacora:profile';
-  const DEFAULT_PROFILE = { weight: 85, height: 1.77, goal: 'Mantener hábitos' };
 
   function loadProfile() {
     try {
       const raw = localStorage.getItem(PROFILE_KEY);
-      if (raw) return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+      if (raw) return JSON.parse(raw);
     } catch (e) {}
-    return { ...DEFAULT_PROFILE };
+    return null;
   }
 
   function persistProfile(profile) {
@@ -1038,6 +1022,18 @@
 
   function renderProfileUI() {
     const p = loadProfile();
+    if (!p) {
+      document.getElementById('chip-weight').textContent = '— kg';
+      document.getElementById('chip-height').textContent = '— m';
+      document.getElementById('chip-goal').textContent = 'Completá tu perfil';
+      document.getElementById('summary-weight').textContent = '—';
+      document.getElementById('summary-height').textContent = '—';
+      document.getElementById('summary-bmi').textContent = '—';
+      document.getElementById('profile-weight').value = '';
+      document.getElementById('profile-height').value = '';
+      document.getElementById('profile-goal').value = '';
+      return;
+    }
     document.getElementById('chip-weight').textContent = `${p.weight} kg`;
     document.getElementById('chip-height').textContent = `${p.height} m`;
     document.getElementById('chip-goal').textContent = p.goal;

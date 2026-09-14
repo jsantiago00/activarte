@@ -465,7 +465,7 @@
     color:var(--ink);
   }
 
-  #feedback-input{
+  #feedback-input, .plain-textarea{
     width:100%;
     font-family:'IBM Plex Sans', sans-serif;
     font-size:14px;
@@ -477,6 +477,11 @@
     margin-bottom:10px;
     background:#fff;
     color:var(--ink);
+  }
+  .plain-textarea.mono{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    min-height:120px;
   }
 
   .auth-input{
@@ -616,6 +621,21 @@
         </div>
 
         <div id="routine-content"></div>
+
+        <button class="btn-secondary" id="export-routine-btn">Exportar rutina</button>
+        <div id="routine-export-fallback" style="display:none;">
+          <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
+          <textarea class="plain-textarea mono" id="routine-export-textarea" readonly></textarea>
+        </div>
+
+        <div class="feedback-note" id="routine-analysis-note" style="display:none;"></div>
+
+        <div class="card">
+          <h3>Importar análisis de rutina</h3>
+          <p class="note" style="margin-bottom:10px;">Pegá acá lo que te respondió Claude sobre tu rutina completa. Esto no se repite seguido — solo cuando cambiás algo importante.</p>
+          <textarea class="plain-textarea" id="routine-analysis-input" placeholder="Pegá acá el análisis..."></textarea>
+          <button class="feedback-btn" id="routine-analysis-save">Guardar análisis</button>
+        </div>
       </section>
 
       <!-- PÁGINA: RESUMEN -->
@@ -676,10 +696,10 @@
           <button class="btn-secondary" id="export-pending-btn" disabled>Exportar consultas pendientes</button>
           <div id="pending-fallback" style="display:none; margin-top:10px;">
             <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
-            <textarea id="pending-textarea" readonly></textarea>
+            <textarea class="plain-textarea mono" id="pending-textarea" readonly></textarea>
           </div>
           <p class="note" style="margin:12px 0 6px;">Pegá acá las respuestas de Claude (mismo formato numerado):</p>
-          <textarea id="knowledge-input" placeholder="1) ...&#10;2) ..."></textarea>
+          <textarea class="plain-textarea" id="knowledge-input" placeholder="1) ...&#10;2) ..."></textarea>
           <button class="feedback-btn" id="knowledge-save">Guardar respuestas</button>
         </div>
       </section>
@@ -1001,6 +1021,104 @@
 
   window.refreshRoutinePage = () => renderRoutine(currentRoutineDay);
   renderRoutine('espalda');
+
+  // --- Análisis de rutina (privado por cuenta, flujo manual aparte — no se repite seguido) ---
+  const ROUTINE_DAYS = [
+    { key: 'espalda', label: 'Espalda y Bíceps' },
+    { key: 'piernas', label: 'Piernas' },
+    { key: 'pecho', label: 'Pecho, Hombro y Tríceps' },
+  ];
+
+  function buildRoutineExportText() {
+    const header = 'Quiero que analices si mi rutina de gimnasio es óptima: si el volumen y la selección de ejercicios tienen sentido para mi objetivo, si hay redundancias que podría sacar para entrenar menos tiempo sin perder resultado, y si falta algo importante. Dame un análisis breve y concreto (no me armes una rutina nueva entera, salvo que haga falta), en segunda persona, tono natural, sin bullets ni encabezados innecesarios. Acá está mi rutina actual:';
+    const lines = [];
+    const profile = loadProfile();
+    if (profile) lines.push(`Perfil: ${profile.weight} kg, ${profile.height} m, objetivo: "${profile.goal}"`);
+    lines.push('');
+    ROUTINE_DAYS.forEach(d => {
+      const exercises = loadRoutine(d.key);
+      lines.push(`## ${d.label}`);
+      if (!exercises.length) {
+        lines.push('(sin ejercicios cargados)');
+      } else {
+        exercises.forEach(ex => {
+          const setsText = ex.sets.length ? ex.sets.map(s => `${s.weight}kg x${s.reps}`).join(', ') : '(sin series cargadas)';
+          lines.push(`- ${ex.name}: ${setsText}`);
+        });
+      }
+      lines.push('');
+    });
+    return [header, '', ...lines].join('\n');
+  }
+
+  document.getElementById('export-routine-btn').addEventListener('click', async () => {
+    const text = buildRoutineExportText();
+    const btn = document.getElementById('export-routine-btn');
+    const fallbackWrap = document.getElementById('routine-export-fallback');
+    const fallbackArea = document.getElementById('routine-export-textarea');
+
+    let copied = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (e) {
+        copied = false;
+      }
+    }
+
+    if (copied) {
+      fallbackWrap.style.display = 'none';
+      const original = btn.textContent;
+      btn.textContent = 'Copiado ✓';
+      setTimeout(() => { btn.textContent = original; }, 1600);
+    } else {
+      fallbackArea.value = text;
+      fallbackWrap.style.display = 'block';
+      fallbackArea.focus();
+      fallbackArea.select();
+    }
+  });
+
+  const ROUTINE_ANALYSIS_KEY = 'bitacora:routineAnalysis';
+
+  function loadRoutineAnalysis() {
+    try {
+      const raw = localStorage.getItem(ROUTINE_ANALYSIS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
+
+  function persistRoutineAnalysis(analysis) {
+    localStorage.setItem(ROUTINE_ANALYSIS_KEY, JSON.stringify(analysis));
+    if (window.BitacoraSync) window.BitacoraSync.pushRoutineAnalysis(analysis);
+  }
+
+  function renderRoutineAnalysis() {
+    const note = document.getElementById('routine-analysis-note');
+    const a = loadRoutineAnalysis();
+    if (a && a.text) {
+      note.style.display = 'block';
+      const dateLabel = a.savedAt ? new Date(a.savedAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+      note.textContent = a.text + (dateLabel ? `\n\n— guardado el ${dateLabel}` : '');
+    } else {
+      note.style.display = 'none';
+      note.textContent = '';
+    }
+  }
+
+  document.getElementById('routine-analysis-save').addEventListener('click', () => {
+    const input = document.getElementById('routine-analysis-input');
+    const text = input.value.trim();
+    if (!text) return;
+    persistRoutineAnalysis({ text, savedAt: new Date().toISOString() });
+    input.value = '';
+    renderRoutineAnalysis();
+  });
+
+  window.refreshRoutineAnalysis = renderRoutineAnalysis;
+  renderRoutineAnalysis();
 
   // --- Perfil (privado por cuenta: peso, altura, objetivo) ---
   // Sin datos de ejemplo: si nadie cargó nada todavía, loadProfile() devuelve null y la UI

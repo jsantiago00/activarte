@@ -54,6 +54,7 @@ async function init() {
         watchUserCollection('feedback', 'bitacora:feedback:', (data) => data.text || '', window.refreshComidasPage);
         watchUserCollection('routine', 'bitacora:routine:', (data) => JSON.stringify(data.exercises || []), window.refreshRoutinePage);
         watchUserDoc('profile', 'data', 'bitacora:profile', (data) => JSON.stringify(data || {}), window.refreshProfileUI);
+        watchUserDoc('routineAnalysis', 'data', 'bitacora:routineAnalysis', (data) => JSON.stringify(data || {}), window.refreshRoutineAnalysis);
       }
       state.authListeners.forEach((cb) => cb(user));
     });
@@ -159,6 +160,16 @@ async function pushProfile(profile) {
   }
 }
 
+async function pushRoutineAnalysis(analysis) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'routineAnalysis', 'data');
+    await firestoreApi.setDoc(ref, { ...analysis, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushRoutineAnalysis', err);
+  }
+}
+
 // --- Base de alimentos compartida (foodKnowledge) + cola de pendientes ---
 
 async function lookupFoodKnowledge(slug) {
@@ -243,6 +254,7 @@ window.BitacoraSync = {
   pushFeedback,
   pushRoutine,
   pushProfile,
+  pushRoutineAnalysis,
   lookupFoodKnowledge,
   saveFoodKnowledge,
   queueFoodQuery,

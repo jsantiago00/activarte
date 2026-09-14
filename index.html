@@ -671,8 +671,8 @@
         </div>
 
         <div class="card">
-          <h3>Base de alimentos compartida</h3>
-          <p class="note" style="margin-bottom:10px;">Comidas sin info todavía: <strong id="pending-count">0</strong></p>
+          <h3>Consultas pendientes para Claude</h3>
+          <p class="note" style="margin-bottom:10px;">Alimentos sin info + días sin feedback, todo junto: <strong id="pending-count">0</strong></p>
           <button class="btn-secondary" id="export-pending-btn" disabled>Exportar consultas pendientes</button>
           <div id="pending-fallback" style="display:none; margin-top:10px;">
             <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
@@ -828,6 +828,7 @@
         current.splice(idx, 1);
         persistMeals(current);
         renderMeals(current);
+        syncPendingDayState(selectedDate);
       });
     });
     ul.querySelectorAll('.info-badge').forEach(btn => {
@@ -862,6 +863,7 @@
     renderFeedbackNote();
     document.getElementById('export-fallback').style.display = 'none';
     document.getElementById('feedback-input').value = '';
+    if (typeof syncPendingDayState === 'function') syncPendingDayState(selectedDate);
   }
 
   document.getElementById('prev-day').addEventListener('click', () => {
@@ -889,6 +891,7 @@
     renderMeals(list);
     input.value = '';
     handleFoodKnowledge(text);
+    syncPendingDayState(selectedDate);
   });
 
   // --- Rutina (privada por cuenta, editable — nada de esto se comparte entre usuarios) ---
@@ -1109,10 +1112,17 @@
     if (window.BitacoraSync) window.BitacoraSync.pushFeedback(dateKey(selectedDate), text);
     input.value = '';
     renderFeedbackNote();
+    syncPendingDayState(selectedDate);
   });
 
-  // --- Base de alimentos: cola de pendientes (localStorage, se sincroniza si hay cuenta) ---
+  // --- Cola de pendientes: alimentos sin info + días sin feedback (un solo lote para Claude) ---
   const PENDING_KEY = 'bitacora:pendingFoods';
+  const PENDING_DAYS_KEY = 'bitacora:pendingDays';
+
+  function parseDateKey(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
 
   function loadPendingQueue() {
     try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch (e) { return []; }
@@ -1121,10 +1131,17 @@
     localStorage.setItem(PENDING_KEY, JSON.stringify(list));
     renderPendingCount();
   }
+  function loadPendingDays() {
+    try { return JSON.parse(localStorage.getItem(PENDING_DAYS_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function savePendingDays(list) {
+    localStorage.setItem(PENDING_DAYS_KEY, JSON.stringify(list));
+    renderPendingCount();
+  }
   function renderPendingCount() {
-    const list = loadPendingQueue();
-    document.getElementById('pending-count').textContent = list.length;
-    document.getElementById('export-pending-btn').disabled = !list.length;
+    const total = loadPendingQueue().length + loadPendingDays().length;
+    document.getElementById('pending-count').textContent = total;
+    document.getElementById('export-pending-btn').disabled = !total;
   }
   function addToPendingQueue(slug, text) {
     const list = loadPendingQueue();
@@ -1132,6 +1149,22 @@
     list.push({ slug, text });
     savePendingQueue(list);
     if (window.BitacoraSync) window.BitacoraSync.queueFoodQuery(slug, text);
+  }
+  // Un día entra a la cola apenas tiene comidas y no tiene feedback todavía, y sale solo
+  // cuando se le importa feedback o se queda sin comidas. Se llama después de cualquier
+  // cambio a comidas/feedback de una fecha.
+  function syncPendingDayState(date) {
+    const key = dateKey(date);
+    const hasFeedback = !!loadFeedback(date);
+    const hasMeals = loadMeals(date).length > 0;
+    const days = loadPendingDays();
+    const idx = days.indexOf(key);
+    if (hasMeals && !hasFeedback) {
+      if (idx === -1) { days.push(key); savePendingDays(days); }
+    } else if (idx !== -1) {
+      days.splice(idx, 1);
+      savePendingDays(days);
+    }
   }
 
   async function handleFoodKnowledge(text) {
@@ -1164,16 +1197,35 @@
     if (changed) savePendingQueue(local);
   }
 
-  function buildPendingPrompt(list) {
-    const header = 'Necesito una descripción nutricional breve (1-2 oraciones, tono natural, sin alarmismo ni diagnósticos) para cada uno de estos alimentos/platos. Respondé en el MISMO formato numerado, una línea por ítem, sin texto adicional antes o después:';
-    const items = list.map((item, i) => `${i + 1}) ${item.text}`);
-    return [header, '', ...items].join('\n');
+  // Combina alimentos + días pendientes en UNA sola lista ordenada: así export e import
+  // usan exactamente el mismo orden/numeración sin tener que guardar nada extra.
+  function getCombinedPendingItems() {
+    const items = [];
+    loadPendingQueue().forEach(food => items.push({ kind: 'food', ref: food }));
+    loadPendingDays().forEach(dayKey => items.push({ kind: 'day', ref: dayKey }));
+    return items;
+  }
+
+  function describePendingItem(item) {
+    if (item.kind === 'food') {
+      return `[ALIMENTO] ${item.ref.text} → descripción nutricional breve (1-2 oraciones, tono natural, sin alarmismo ni diagnósticos).`;
+    }
+    const dateObj = parseDateKey(item.ref);
+    const label = dateObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const meals = loadMeals(dateObj).map(m => `${m.time} — ${m.text}`).join(' / ');
+    return `[DÍA] Feedback para ${label}. Comidas: ${meals}. Pedido: 3-4 oraciones sobre equilibrio del día (proteína, variedad, verduras/frutas, hidratación si se infiere) + una sugerencia concreta para el día siguiente. Segunda persona, tono natural, sin bullets ni encabezados, sin diagnósticos médicos.`;
+  }
+
+  function buildPendingPrompt(items) {
+    const header = 'Te pego varias cosas para que respondas en un mismo mensaje, todas numeradas. Respondé en el MISMO formato numerado (N) texto), una línea por número, sin texto adicional antes o después. Para cada número te aclaro entre corchetes qué tipo de respuesta necesito:';
+    const lines = items.map((item, i) => `${i + 1}) ${describePendingItem(item)}`);
+    return [header, '', ...lines].join('\n');
   }
 
   document.getElementById('export-pending-btn').addEventListener('click', async () => {
-    const list = loadPendingQueue();
-    if (!list.length) return;
-    const text = buildPendingPrompt(list);
+    const items = getCombinedPendingItems();
+    if (!items.length) return;
+    const text = buildPendingPrompt(items);
     const btn = document.getElementById('export-pending-btn');
     const fallbackWrap = document.getElementById('pending-fallback');
     const fallbackArea = document.getElementById('pending-textarea');
@@ -1214,26 +1266,38 @@
     const input = document.getElementById('knowledge-input');
     const raw = input.value.trim();
     if (!raw) return;
-    const list = loadPendingQueue();
+    const items = getCombinedPendingItems();
     const answers = parseNumberedAnswers(raw);
-    const remaining = [];
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
+    const remainingFoods = [];
+    const remainingDays = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       const answer = answers[i + 1];
-      if (answer) {
+      if (!answer) {
+        if (item.kind === 'food') remainingFoods.push(item.ref);
+        else remainingDays.push(item.ref);
+        continue;
+      }
+      if (item.kind === 'food') {
         if (window.BitacoraSync) {
-          await window.BitacoraSync.saveFoodKnowledge(item.slug, item.text, answer);
-          await window.BitacoraSync.clearPendingFoodQuery(item.slug);
+          await window.BitacoraSync.saveFoodKnowledge(item.ref.slug, item.ref.text, answer);
+          await window.BitacoraSync.clearPendingFoodQuery(item.ref.slug);
         } else {
-          localStorage.setItem('bitacora:foodinfo:' + item.slug, answer);
+          localStorage.setItem('bitacora:foodinfo:' + item.ref.slug, answer);
         }
       } else {
-        remaining.push(item);
+        const dateObj = parseDateKey(item.ref);
+        saveFeedback(dateObj, answer);
+        if (window.BitacoraSync) window.BitacoraSync.pushFeedback(item.ref, answer);
       }
     }
-    savePendingQueue(remaining);
+
+    savePendingQueue(remainingFoods);
+    savePendingDays(remainingDays);
     input.value = '';
     renderMeals(loadMeals(selectedDate));
+    renderFeedbackNote();
   });
 
   // --- Cuenta: login / logout ---

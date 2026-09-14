@@ -3,7 +3,7 @@
 // NO pasan por acá: no están en la lista de hosts permitidos más abajo, así que el navegador los maneja
 // directamente. Eso es intencional — son API calls en vivo, no assets estáticos, y Firestore ya maneja
 // su propio cache offline (persistentLocalCache) del lado del cliente.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `bitacora-cache-${CACHE_VERSION}`;
 
 const APP_SHELL = [

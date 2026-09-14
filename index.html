@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ActivArte - Bitácora nutricional</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#23283A">
+<meta name="color-scheme" content="light">
+
+<!-- iOS: agregar a pantalla de inicio -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ActivArte">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+
+<!-- Android / Chrome -->
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="./icons/icon-192.png" type="image/png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EDE8DE;
+    --paper-card: #F7F4EC;
+    --line: #D6CFBE;
+    --ink: #23283A;
+    --muted: #8A8577;
+    --food: #B5482E;
+    --food-soft: #E7D3C9;
+    --gym: #3F6B4F;
+    --gym-soft: #D6E0D3;
+    --summary: #2E5C8A;
+    --summary-soft: #D3DEE7;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px);
+    background-size: 100% 28px;
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding: 18px 12px 40px;
+  }
+  .notebook{
+    width:100%;
+    max-width:430px;
+    position:relative;
+  }
+  .cover{
+    background: var(--ink);
+    color: var(--paper-card);
+    border-radius:14px 14px 0 0;
+    padding:22px 22px 26px 34px;
+    position:relative;
+    overflow:hidden;
+  }
+  .holes{
+    position:absolute;
+    left:10px; top:0; bottom:0;
+    width:14px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-evenly;
+    align-items:center;
+  }
+  .holes span{
+    width:9px;height:9px;border-radius:50%;
+    background: var(--paper);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+  }
+  .cover h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:34px;
+    letter-spacing:.5px;
+    margin:0 0 2px;
+    text-transform:uppercase;
+  }
+  .cover .sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color: #C9C2B2;
+    margin:0;
+  }
+  .stats-row{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+  }
+  .stat-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    background: rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:20px;
+    padding:5px 11px;
+    color: var(--paper-card);
+  }
+
+  .pages-wrap{
+    position:relative;
+    display:flex;
+  }
+  .page-area{
+    flex:1;
+    background: var(--paper-card);
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+    min-height:480px;
+    padding:26px 20px 30px 34px;
+    position:relative;
+    border-radius:0;
+  }
+  .page-area .holes{ }
+  .tabs{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding-top:18px;
+  }
+  .tab{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    writing-mode: vertical-rl;
+    text-orientation:mixed;
+    padding:14px 7px;
+    border-radius:0 8px 8px 0;
+    cursor:pointer;
+    border:1px solid var(--line);
+    border-left:none;
+    transform: translateX(-6px);
+    transition: transform .15s ease;
+    user-select:none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .tab{ transition:none; }
+  }
+  .tab[data-tab="comidas"]{ background:var(--food-soft); color:var(--food); }
+  .tab[data-tab="rutina"]{ background:var(--gym-soft); color:var(--gym); }
+  .tab[data-tab="resumen"]{ background:var(--summary-soft); color:var(--summary); }
+  .tab[data-tab="cuenta"]{ background:var(--paper-card); color:var(--ink); }
+  .tab.active{
+    transform: translateX(0px);
+    box-shadow: -3px 3px 8px rgba(0,0,0,.12);
+  }
+
+  .page{ display:none; }
+  .page.active{ display:block; }
+
+  .page h2{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-size:24px;
+    margin:0 0 4px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .page .date-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 18px;
+  }
+
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:14px;
+  }
+  .card h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    margin:0 0 8px;
+  }
+
+  .profile-grid{
+    display:grid;
+    grid-template-columns: repeat(3,1fr);
+    gap:10px;
+  }
+  .profile-grid div{ text-align:center; }
+  .profile-grid .val{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:17px;
+  }
+  .profile-grid .lbl{
+    font-size:10.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+
+  .entry-form{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .entry-form textarea{
+    flex:1;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    resize:none;
+    min-height:44px;
+  }
+  .entry-form button{
+    background:var(--food);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:0 16px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .entry-form button:focus-visible,
+  .tab:focus-visible,
+  button:focus-visible{
+    outline: 3px solid var(--summary);
+    outline-offset:2px;
+  }
+
+  .entry-list{ list-style:none; margin:0; padding:0; }
+  .entry-list li{
+    padding:10px 0;
+    border-bottom:1px dashed var(--line);
+    font-size:14px;
+  }
+  .entry-list li:last-child{ border-bottom:none; }
+  .entry-list .meal-main{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .entry-list .time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--muted);
+    white-space:nowrap;
+    padding-top:2px;
+  }
+  .entry-list button{
+    background:none;
+    border:none;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:13px;
+    padding:0 2px;
+  }
+  .empty-state{
+    text-align:center;
+    padding:30px 10px;
+    color:var(--muted);
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  .empty-state .icon{
+    font-size:26px;
+    display:block;
+    margin-bottom:8px;
+  }
+  .note{
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.5;
+    border-left:3px solid var(--line);
+    padding-left:10px;
+  }
+
+  .date-nav{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:0 0 18px;
+  }
+  .date-nav .date-label{ margin:0; flex:1; }
+  .date-nav button{
+    background:none;
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--ink);
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    padding:2px 9px;
+    line-height:1.7;
+    cursor:pointer;
+  }
+  .date-nav button:disabled{ opacity:.35; cursor:default; }
+
+  .day-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  .day-tab{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    font-weight:600;
+    padding:6px 12px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .day-tab.active{
+    background:var(--gym);
+    color:#fff;
+    border-color:var(--gym);
+  }
+
+  .exercise-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .exercise-card h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    margin:0 0 8px;
+  }
+  .sets-table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+  }
+  .sets-table th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+    padding-bottom:4px;
+  }
+  .sets-table td{ padding:3px 0; }
+
+  .feedback-btn, .btn-secondary{
+    border:none;
+    border-radius:8px;
+    padding:9px 14px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .feedback-btn{
+    background:var(--summary);
+    color:#fff;
+  }
+  .btn-secondary{
+    background:var(--paper-card);
+    color:var(--ink);
+    border:1px solid var(--line);
+  }
+  .feedback-btn:disabled, .btn-secondary:disabled{ opacity:.6; cursor:default; }
+
+  .feedback-note{
+    background:#FFF7D6;
+    border:1px solid #E8DDA0;
+    border-radius:2px;
+    padding:14px 16px;
+    margin-top:12px;
+    font-size:13.5px;
+    line-height:1.55;
+    position:relative;
+    transform:rotate(-0.6deg);
+    box-shadow:0 2px 6px rgba(0,0,0,.08);
+    white-space:pre-wrap;
+  }
+  .feedback-note::before{
+    content:'';
+    position:absolute;
+    top:-9px; left:50%;
+    transform:translateX(-50%) rotate(-2deg);
+    width:46px;height:16px;
+    background:rgba(210,180,120,.55);
+  }
+
+  #export-fallback{ margin-top:10px; }
+  #export-fallback textarea{
+    width:100%;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    min-height:120px;
+    resize:vertical;
+    background:#fff;
+    color:var(--ink);
+  }
+
+  #feedback-input{
+    width:100%;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    min-height:70px;
+    resize:vertical;
+    margin-bottom:10px;
+    background:#fff;
+    color:var(--ink);
+  }
+
+  .auth-input{
+    width:100%;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 12px;
+    margin-bottom:8px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .auth-error{
+    color:var(--food);
+    border-left-color:var(--food);
+    margin-top:8px;
+  }
+  .auth-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .info-badge{
+    background:none;
+    border:1px solid var(--line);
+    border-radius:50%;
+    width:18px;
+    height:18px;
+    line-height:1;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--summary);
+    cursor:pointer;
+    padding:0;
+    flex-shrink:0;
+  }
+  .meal-row{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .meal-row .meal-actions{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .meal-row .food-info{
+    display:none;
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.5;
+    border-left:3px solid var(--summary-soft);
+    padding-left:10px;
+  }
+  .meal-row .food-info.open{ display:block; }
+</style>
+</head>
+<body>
+
+<div class="notebook">
+  <div class="cover">
+    <div class="holes"><span></span><span></span><span></span><span></span></div>
+    <h1>Bitácora</h1>
+    <p class="sub" id="today-date">—</p>
+    <div class="stats-row">
+      <span class="stat-chip">85 kg</span>
+      <span class="stat-chip">1.77 m</span>
+      <span class="stat-chip">Mantener hábitos</span>
+    </div>
+  </div>
+
+  <div class="pages-wrap">
+    <div class="page-area">
+      <div class="holes"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+      <!-- PÁGINA: COMIDAS -->
+      <section class="page active" id="page-comidas">
+        <h2>Comidas</h2>
+
+        <div class="date-nav">
+          <button id="prev-day" aria-label="Día anterior">‹</button>
+          <p class="date-label" id="date-comidas">—</p>
+          <button id="next-day" aria-label="Día siguiente">›</button>
+        </div>
+
+        <div class="entry-form">
+          <textarea id="meal-input" placeholder="¿Qué comiste? Ej: milanesa con puré y una manzana"></textarea>
+          <button id="meal-add">Anotar</button>
+        </div>
+
+        <ul class="entry-list" id="meal-list"></ul>
+        <p class="empty-state" id="meal-empty" style="display:none;">
+          <span class="icon">🍽️</span>
+          Todavía no anotaste nada este día.
+        </p>
+
+        <button class="btn-secondary" id="export-btn">Exportar día</button>
+        <div id="export-fallback" style="display:none;">
+          <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
+          <textarea id="export-textarea" readonly></textarea>
+        </div>
+
+        <div class="feedback-note" id="feedback-note" style="display:none;"></div>
+
+        <div class="card" id="import-section">
+          <h3>Importar feedback</h3>
+          <p class="note" style="margin-bottom:10px;">Pegá acá la respuesta que te dio Claude sobre este día.</p>
+          <textarea id="feedback-input" placeholder="Pegá acá el feedback..."></textarea>
+          <button class="feedback-btn" id="feedback-save">Guardar feedback</button>
+        </div>
+      </section>
+
+      <!-- PÁGINA: RUTINA -->
+      <section class="page" id="page-rutina">
+        <h2>Rutina</h2>
+        <p class="date-label">Gimnasio · Fútbol</p>
+
+        <div class="card">
+          <div class="profile-grid">
+            <div><div class="val">1x</div><div class="lbl">Gym esta sem.</div></div>
+            <div><div class="val">2x</div><div class="lbl">Fútbol esta sem.</div></div>
+            <div><div class="val">3x</div><div class="lbl">Meta gym</div></div>
+          </div>
+        </div>
+
+        <div class="day-tabs" id="day-tabs">
+          <button class="day-tab active" data-day="espalda">Espalda y Bíceps</button>
+          <button class="day-tab" data-day="piernas">Piernas</button>
+          <button class="day-tab" data-day="pecho">Pecho, Hombro y Tríceps</button>
+        </div>
+
+        <div id="routine-content"></div>
+      </section>
+
+      <!-- PÁGINA: RESUMEN -->
+      <section class="page" id="page-resumen">
+        <h2>Resumen</h2>
+        <p class="date-label">Semana actual</p>
+
+        <div class="card">
+          <div class="profile-grid">
+            <div><div class="val">85</div><div class="lbl">Peso (kg)</div></div>
+            <div><div class="val">1.77</div><div class="lbl">Altura (m)</div></div>
+            <div><div class="val">27.1</div><div class="lbl">IMC</div></div>
+          </div>
+        </div>
+
+        <p class="empty-state">
+          <span class="icon">📊</span>
+          Cuando tengamos comidas y rutina cargándose, esta página va a mostrar el panorama completo de la semana.
+        </p>
+      </section>
+
+      <!-- PÁGINA: CUENTA -->
+      <section class="page" id="page-cuenta">
+        <h2>Cuenta</h2>
+        <p class="date-label" id="cuenta-status">Modo local (sin sincronizar)</p>
+
+        <div class="card" id="auth-logged-out">
+          <h3>Iniciar sesión / Crear cuenta</h3>
+          <p class="note" style="margin-bottom:10px;">Es opcional: la app funciona sin conexión y sin cuenta. Si iniciás sesión, tus comidas y feedback se sincronizan entre tus dispositivos.</p>
+          <input class="auth-input" type="email" id="auth-email" placeholder="Email" autocomplete="email">
+          <input class="auth-input" type="password" id="auth-password" placeholder="Contraseña" autocomplete="current-password">
+          <div class="auth-actions">
+            <button class="feedback-btn" id="auth-signin">Entrar</button>
+            <button class="btn-secondary" id="auth-signup">Crear cuenta</button>
+          </div>
+          <p class="note auth-error" id="auth-error" style="display:none;"></p>
+        </div>
+
+        <div class="card" id="auth-logged-in" style="display:none;">
+          <div class="profile-grid" style="grid-template-columns:1fr;">
+            <div><div class="val" id="auth-email-display">—</div><div class="lbl">Sesión iniciada</div></div>
+          </div>
+          <button class="btn-secondary" id="auth-signout" style="margin-top:10px;">Cerrar sesión</button>
+        </div>
+
+        <div class="card">
+          <h3>Base de alimentos compartida</h3>
+          <p class="note" style="margin-bottom:10px;">Comidas sin info todavía: <strong id="pending-count">0</strong></p>
+          <button class="btn-secondary" id="export-pending-btn" disabled>Exportar consultas pendientes</button>
+          <div id="pending-fallback" style="display:none; margin-top:10px;">
+            <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
+            <textarea id="pending-textarea" readonly></textarea>
+          </div>
+          <p class="note" style="margin:12px 0 6px;">Pegá acá las respuestas de Claude (mismo formato numerado):</p>
+          <textarea id="knowledge-input" placeholder="1) ...&#10;2) ..."></textarea>
+          <button class="feedback-btn" id="knowledge-save">Guardar respuestas</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="comidas">Comidas</div>
+      <div class="tab" data-tab="rutina">Rutina</div>
+      <div class="tab" data-tab="resumen">Resumen</div>
+      <div class="tab" data-tab="cuenta">Cuenta</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- Navegación entre páginas ---
+  const tabs = document.querySelectorAll('.tab');
+  const pages = document.querySelectorAll('.page');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      pages.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('page-' + tab.dataset.tab).classList.add('active');
+      if (tab.dataset.tab === 'cuenta') {
+        handleAuthChange(window.BitacoraSync ? window.BitacoraSync.currentUser : null);
+        refreshPendingFromCloud();
+      }
+    });
+  });
+
+  // --- Fecha de hoy (portada) ---
+  const todayStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('today-date').textContent = todayStr;
+
+  // --- Utilidades de fecha (clave local, sin desfasaje UTC) ---
+  function startOfDay(d) {
+    const copy = new Date(d);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+  function dateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  function isSameDay(a, b) {
+    return dateKey(a) === dateKey(b);
+  }
+
+  let selectedDate = startOfDay(new Date());
+  const today = startOfDay(new Date());
+
+  // --- Slug de alimento (clave de cache local / doc id en Firestore) ---
+  function slugifyFood(text) {
+    const base = text
+      .normalize('NFD').replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    return (base || 'item').slice(0, 120);
+  }
+  window.slugifyFood = slugifyFood;
+
+  // --- Storage: comidas (localStorage) ---
+  function mealsKey(date) { return 'bitacora:meals:' + dateKey(date); }
+
+  function loadMeals(date) {
+    try {
+      const raw = localStorage.getItem(mealsKey(date));
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveMeals(date, list) {
+    try {
+      localStorage.setItem(mealsKey(date), JSON.stringify(list));
+    } catch (e) {
+      console.error('No se pudo guardar', e);
+    }
+  }
+
+  // --- Storage: feedback importado (localStorage) ---
+  function feedbackKey(date) { return 'bitacora:feedback:' + dateKey(date); }
+
+  function loadFeedback(date) {
+    try {
+      return localStorage.getItem(feedbackKey(date)) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function saveFeedback(date, text) {
+    try {
+      localStorage.setItem(feedbackKey(date), text);
+    } catch (e) {
+      console.error('No se pudo guardar el feedback', e);
+    }
+  }
+
+  function persistMeals(list) {
+    saveMeals(selectedDate, list);
+    if (window.BitacoraSync) window.BitacoraSync.pushMeals(dateKey(selectedDate), list);
+  }
+
+  function renderMeals(list) {
+    const ul = document.getElementById('meal-list');
+    const empty = document.getElementById('meal-empty');
+    const exportBtn = document.getElementById('export-btn');
+    ul.innerHTML = '';
+    if (!list.length) {
+      empty.style.display = 'block';
+      exportBtn.disabled = true;
+      return;
+    }
+    empty.style.display = 'none';
+    exportBtn.disabled = false;
+    list.forEach((m, i) => {
+      const slug = slugifyFood(m.text);
+      const info = localStorage.getItem('bitacora:foodinfo:' + slug);
+      const li = document.createElement('li');
+      li.className = 'meal-row';
+      li.innerHTML = `
+        <div class="meal-main">
+          <span>${m.text}</span>
+          <span class="meal-actions">
+            <span class="time">${m.time}</span>
+            <button class="info-badge" aria-label="Ver info" data-slug="${slug}" ${info ? '' : 'style="display:none;"'}>i</button>
+            <button aria-label="Borrar" data-i="${i}">✕</button>
+          </span>
+        </div>
+        <div class="food-info"></div>
+      `;
+      if (info) li.querySelector('.food-info').textContent = info;
+      ul.appendChild(li);
+    });
+    ul.querySelectorAll('button[data-i]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.i, 10);
+        const current = loadMeals(selectedDate);
+        current.splice(idx, 1);
+        persistMeals(current);
+        renderMeals(current);
+      });
+    });
+    ul.querySelectorAll('.info-badge').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.closest('.meal-row').querySelector('.food-info').classList.toggle('open');
+      });
+    });
+  }
+
+  function renderFeedbackNote() {
+    const note = document.getElementById('feedback-note');
+    const text = loadFeedback(selectedDate);
+    if (text) {
+      note.style.display = 'block';
+      note.textContent = text;
+    } else {
+      note.style.display = 'none';
+      note.textContent = '';
+    }
+  }
+
+  function renderDateUI() {
+    const label = selectedDate.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+    const suffix = isSameDay(selectedDate, today) ? ' (hoy)' : '';
+    document.getElementById('date-comidas').textContent = label + suffix;
+    document.getElementById('next-day').disabled = isSameDay(selectedDate, today);
+  }
+
+  function refreshComidasPage() {
+    renderDateUI();
+    renderMeals(loadMeals(selectedDate));
+    renderFeedbackNote();
+    document.getElementById('export-fallback').style.display = 'none';
+    document.getElementById('feedback-input').value = '';
+  }
+
+  document.getElementById('prev-day').addEventListener('click', () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() - 1);
+    selectedDate = d;
+    refreshComidasPage();
+  });
+
+  document.getElementById('next-day').addEventListener('click', () => {
+    if (isSameDay(selectedDate, today)) return;
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    selectedDate = startOfDay(d) > today ? today : d;
+    refreshComidasPage();
+  });
+
+  document.getElementById('meal-add').addEventListener('click', () => {
+    const input = document.getElementById('meal-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const list = loadMeals(selectedDate);
+    list.push({ text, time: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) });
+    persistMeals(list);
+    renderMeals(list);
+    input.value = '';
+    handleFoodKnowledge(text);
+  });
+
+  // --- Rutina ---
+  const routineData = {
+    espalda: [
+      { name: 'Jalón al pecho (cable)', weights: [40, 45, 45, 45], reps: [10, 10, 8, 6] },
+      { name: 'Remo iso-lateral', weights: [30, 40, 40, 40], reps: [12, 10, 10, 10] },
+      { name: 'Remo con mancuerna', weights: [17.5, 17.5, 20], reps: [12, 12, 12] },
+      { name: 'Curl martillo (mancuerna)', weights: [10, 10, 10, 10], reps: [10, 10, 10, 6] },
+      { name: 'Curl predicador (barra)', weights: [15, 20, 20, 20], reps: [12, 12, 12, 12] },
+      { name: 'Curl de bíceps inclinado (mancuerna)', weights: [10, 10, 10], reps: [10, 10, 10] },
+    ],
+    piernas: [
+      { name: 'Curl piernas acostado (máquina)', weights: [30, 40, 40, 40], reps: [12, 12, 8, 8] },
+      { name: 'Extensión de pierna', weights: [35, 50, 60], reps: [12, 12, 12] },
+      { name: 'Sentadilla hack', weights: [60, 80, 80, 80], reps: [10, 10, 10, 10] },
+      { name: 'Elevación de gemelos de pie (Smith)', weights: [80, 80, 80, 80], reps: [15, 15, 15, 15] },
+      { name: 'Empuje de caderas (barra)', weights: [60, 60, 70, 70], reps: [10, 12, 12, 12] },
+    ],
+    pecho: null,
+  };
+
+  function renderRoutine(day) {
+    const container = document.getElementById('routine-content');
+    const data = routineData[day];
+    if (!data) {
+      container.innerHTML = `
+        <p class="empty-state">
+          <span class="icon">🗓️</span>
+          Todavía no cargaste este día. Pasámelo cuando quieras y lo sumamos.
+        </p>`;
+      return;
+    }
+    container.innerHTML = data.map(ex => {
+      const rows = ex.weights.map((w, i) => `<tr><td>${i + 1}</td><td>${w} kg</td><td>${ex.reps[i]}</td></tr>`).join('');
+      return `
+        <div class="exercise-card">
+          <h3>${ex.name}</h3>
+          <table class="sets-table">
+            <thead><tr><th>Serie</th><th>Peso</th><th>Reps</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+  }
+
+  document.querySelectorAll('.day-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.day-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRoutine(btn.dataset.day);
+    });
+  });
+  renderRoutine('espalda');
+
+  // --- Exportar día (texto plano al portapapeles) ---
+  function buildExportText(date, meals) {
+    const label = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const header = `Bitácora — ${label}`;
+    const divider = '-'.repeat(Math.min(header.length, 40));
+    const lines = meals.map(m => `${m.time} — ${m.text}`);
+    return [header, divider, ...lines].join('\n');
+  }
+
+  document.getElementById('export-btn').addEventListener('click', async () => {
+    const meals = loadMeals(selectedDate);
+    if (!meals.length) return;
+
+    const text = buildExportText(selectedDate, meals);
+    const btn = document.getElementById('export-btn');
+    const fallbackWrap = document.getElementById('export-fallback');
+    const fallbackArea = document.getElementById('export-textarea');
+
+    let copied = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (e) {
+        copied = false;
+      }
+    }
+
+    if (copied) {
+      fallbackWrap.style.display = 'none';
+      const original = btn.textContent;
+      btn.textContent = 'Copiado ✓';
+      setTimeout(() => { btn.textContent = original; }, 1600);
+    } else {
+      fallbackArea.value = text;
+      fallbackWrap.style.display = 'block';
+      fallbackArea.focus();
+      fallbackArea.select();
+    }
+  });
+
+  // --- Importar feedback (pegado manual) ---
+  document.getElementById('feedback-save').addEventListener('click', () => {
+    const input = document.getElementById('feedback-input');
+    const text = input.value.trim();
+    if (!text) return;
+    saveFeedback(selectedDate, text);
+    if (window.BitacoraSync) window.BitacoraSync.pushFeedback(dateKey(selectedDate), text);
+    input.value = '';
+    renderFeedbackNote();
+  });
+
+  // --- Base de alimentos: cola de pendientes (localStorage, se sincroniza si hay cuenta) ---
+  const PENDING_KEY = 'bitacora:pendingFoods';
+
+  function loadPendingQueue() {
+    try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function savePendingQueue(list) {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(list));
+    renderPendingCount();
+  }
+  function renderPendingCount() {
+    const list = loadPendingQueue();
+    document.getElementById('pending-count').textContent = list.length;
+    document.getElementById('export-pending-btn').disabled = !list.length;
+  }
+  function addToPendingQueue(slug, text) {
+    const list = loadPendingQueue();
+    if (list.some(item => item.slug === slug)) return;
+    list.push({ slug, text });
+    savePendingQueue(list);
+    if (window.BitacoraSync) window.BitacoraSync.queueFoodQuery(slug, text);
+  }
+
+  async function handleFoodKnowledge(text) {
+    const slug = slugifyFood(text);
+    if (localStorage.getItem('bitacora:foodinfo:' + slug)) return;
+    if (window.BitacoraSync) {
+      const info = await window.BitacoraSync.lookupFoodKnowledge(slug);
+      if (info) {
+        renderMeals(loadMeals(selectedDate));
+        return;
+      }
+    }
+    addToPendingQueue(slug, text);
+  }
+
+  async function refreshPendingFromCloud() {
+    if (!window.BitacoraSync) return;
+    const cloudItems = await window.BitacoraSync.fetchAllPendingFoodQueries();
+    if (!cloudItems.length) return;
+    const local = loadPendingQueue();
+    const known = new Set(local.map(i => i.slug));
+    let changed = false;
+    cloudItems.forEach(item => {
+      if (!known.has(item.slug)) {
+        local.push(item);
+        known.add(item.slug);
+        changed = true;
+      }
+    });
+    if (changed) savePendingQueue(local);
+  }
+
+  function buildPendingPrompt(list) {
+    const header = 'Necesito una descripción nutricional breve (1-2 oraciones, tono natural, sin alarmismo ni diagnósticos) para cada uno de estos alimentos/platos. Respondé en el MISMO formato numerado, una línea por ítem, sin texto adicional antes o después:';
+    const items = list.map((item, i) => `${i + 1}) ${item.text}`);
+    return [header, '', ...items].join('\n');
+  }
+
+  document.getElementById('export-pending-btn').addEventListener('click', async () => {
+    const list = loadPendingQueue();
+    if (!list.length) return;
+    const text = buildPendingPrompt(list);
+    const btn = document.getElementById('export-pending-btn');
+    const fallbackWrap = document.getElementById('pending-fallback');
+    const fallbackArea = document.getElementById('pending-textarea');
+
+    let copied = false;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      } catch (e) {
+        copied = false;
+      }
+    }
+
+    if (copied) {
+      fallbackWrap.style.display = 'none';
+      const original = btn.textContent;
+      btn.textContent = 'Copiado ✓';
+      setTimeout(() => { btn.textContent = original; }, 1600);
+    } else {
+      fallbackArea.value = text;
+      fallbackWrap.style.display = 'block';
+      fallbackArea.focus();
+      fallbackArea.select();
+    }
+  });
+
+  function parseNumberedAnswers(raw) {
+    const map = {};
+    raw.split('\n').map(l => l.trim()).filter(Boolean).forEach(line => {
+      const m = line.match(/^(\d+)\)\s*(.+)$/);
+      if (m) map[parseInt(m[1], 10)] = m[2].trim();
+    });
+    return map;
+  }
+
+  document.getElementById('knowledge-save').addEventListener('click', async () => {
+    const input = document.getElementById('knowledge-input');
+    const raw = input.value.trim();
+    if (!raw) return;
+    const list = loadPendingQueue();
+    const answers = parseNumberedAnswers(raw);
+    const remaining = [];
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      const answer = answers[i + 1];
+      if (answer) {
+        if (window.BitacoraSync) {
+          await window.BitacoraSync.saveFoodKnowledge(item.slug, item.text, answer);
+          await window.BitacoraSync.clearPendingFoodQuery(item.slug);
+        } else {
+          localStorage.setItem('bitacora:foodinfo:' + item.slug, answer);
+        }
+      } else {
+        remaining.push(item);
+      }
+    }
+    savePendingQueue(remaining);
+    input.value = '';
+    renderMeals(loadMeals(selectedDate));
+  });
+
+  // --- Cuenta: login / logout ---
+  function translateAuthError(err) {
+    const code = err && err.code;
+    const map = {
+      'auth/invalid-email': 'Email inválido.',
+      'auth/missing-password': 'Falta la contraseña.',
+      'auth/weak-password': 'La contraseña necesita al menos 6 caracteres.',
+      'auth/email-already-in-use': 'Ya existe una cuenta con ese email.',
+      'auth/invalid-credential': 'Email o contraseña incorrectos.',
+      'auth/user-not-found': 'No existe una cuenta con ese email.',
+      'auth/wrong-password': 'Contraseña incorrecta.',
+      'auth/network-request-failed': 'Sin conexión — probá de nuevo cuando tengas internet.',
+    };
+    return map[code] || 'Hubo un problema. Probá de nuevo.';
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  function handleAuthChange(user) {
+    const loggedOutCard = document.getElementById('auth-logged-out');
+    const loggedInCard = document.getElementById('auth-logged-in');
+    const status = document.getElementById('cuenta-status');
+    if (user) {
+      loggedOutCard.style.display = 'none';
+      loggedInCard.style.display = 'block';
+      document.getElementById('auth-email-display').textContent = user.email;
+      status.textContent = 'Sincronizado con la nube';
+    } else {
+      loggedOutCard.style.display = 'block';
+      loggedInCard.style.display = 'none';
+      status.textContent = (window.BitacoraSync && window.BitacoraSync.isConfigured())
+        ? 'Modo local (iniciá sesión para sincronizar)'
+        : 'Modo local (Firebase no configurado)';
+    }
+  }
+
+  document.getElementById('auth-signin').addEventListener('click', async () => {
+    if (!window.BitacoraSync || !window.BitacoraSync.isConfigured()) {
+      showAuthError('Firebase no está configurado todavía (ver firebase-config.js).');
+      return;
+    }
+    try {
+      await window.BitacoraSync.signIn(
+        document.getElementById('auth-email').value.trim(),
+        document.getElementById('auth-password').value
+      );
+      document.getElementById('auth-error').style.display = 'none';
+    } catch (e) {
+      showAuthError(translateAuthError(e));
+    }
+  });
+
+  document.getElementById('auth-signup').addEventListener('click', async () => {
+    if (!window.BitacoraSync || !window.BitacoraSync.isConfigured()) {
+      showAuthError('Firebase no está configurado todavía (ver firebase-config.js).');
+      return;
+    }
+    try {
+      await window.BitacoraSync.signUp(
+        document.getElementById('auth-email').value.trim(),
+        document.getElementById('auth-password').value
+      );
+      document.getElementById('auth-error').style.display = 'none';
+    } catch (e) {
+      showAuthError(translateAuthError(e));
+    }
+  });
+
+  document.getElementById('auth-signout').addEventListener('click', () => {
+    if (window.BitacoraSync) window.BitacoraSync.logOut();
+  });
+
+  window.addEventListener('bitacora-sync-ready', () => {
+    window.BitacoraSync.onAuthChange((user) => {
+      handleAuthChange(user);
+      if (user) refreshPendingFromCloud();
+    });
+  });
+
+  // --- Init ---
+  window.refreshComidasPage = refreshComidasPage;
+  refreshComidasPage();
+  renderPendingCount();
+  handleAuthChange(null);
+
+  // --- Service worker (PWA) ---
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(err => {
+        console.warn('No se pudo registrar el service worker', err);
+      });
+    });
+  }
+</script>
+
+<!-- Sincronización opcional con Firebase (ver firebase-config.js). Si no está configurado,
+     todo lo de arriba sigue funcionando 100% local con localStorage. -->
+<script src="./firebase-config.js"></script>
+<script type="module" src="./sync.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Datos privados de cada usuario (comidas y feedback importado de Claude).
+    // Solo el dueño de la cuenta puede leer/escribir sus propios documentos.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Base de alimentos compartida: la puede LEER cualquier usuario logueado (vos y tu
+    // familia), pero solo vos (el dueño) podés escribir/actualizar entradas.
+    // Reemplazá TU_UID_AQUI por tu UID real: Firebase Console > Authentication > Users,
+    // después de crear tu cuenta por primera vez desde la app.
+    match /foodKnowledge/{foodId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == "TU_UID_AQUI";
+    }
+
+    // Cola de "alimentos sin info todavía". Cualquier usuario logueado puede sumar
+    // pedidos (vos y tu familia), pero solo vos podés borrarlos/editarlos al resolverlos.
+    match /pendingFoodQueries/{foodId} {
+      allow read, create: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.uid == "TU_UID_AQUI";
+    }
+  }
+}

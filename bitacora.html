@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bitácora</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #EDE8DE;
+    --paper-card: #F7F4EC;
+    --line: #D6CFBE;
+    --ink: #23283A;
+    --muted: #8A8577;
+    --food: #B5482E;
+    --food-soft: #E7D3C9;
+    --gym: #3F6B4F;
+    --gym-soft: #D6E0D3;
+    --summary: #2E5C8A;
+    --summary-soft: #D3DEE7;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper);
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px);
+    background-size: 100% 28px;
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding: 18px 12px 40px;
+  }
+  .notebook{
+    width:100%;
+    max-width:430px;
+    position:relative;
+  }
+  .cover{
+    background: var(--ink);
+    color: var(--paper-card);
+    border-radius:14px 14px 0 0;
+    padding:22px 22px 26px 34px;
+    position:relative;
+    overflow:hidden;
+  }
+  .holes{
+    position:absolute;
+    left:10px; top:0; bottom:0;
+    width:14px;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-evenly;
+    align-items:center;
+  }
+  .holes span{
+    width:9px;height:9px;border-radius:50%;
+    background: var(--paper);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
+  }
+  .cover h1{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:34px;
+    letter-spacing:.5px;
+    margin:0 0 2px;
+    text-transform:uppercase;
+  }
+  .cover .sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color: #C9C2B2;
+    margin:0;
+  }
+  .stats-row{
+    display:flex;
+    gap:10px;
+    margin-top:16px;
+  }
+  .stat-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    background: rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:20px;
+    padding:5px 11px;
+    color: var(--paper-card);
+  }
+
+  .pages-wrap{
+    position:relative;
+    display:flex;
+  }
+  .page-area{
+    flex:1;
+    background: var(--paper-card);
+    border-left:1px solid var(--line);
+    border-right:1px solid var(--line);
+    min-height:480px;
+    padding:26px 20px 30px 34px;
+    position:relative;
+    border-radius:0;
+  }
+  .page-area .holes{ }
+  .tabs{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    padding-top:18px;
+  }
+  .tab{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    writing-mode: vertical-rl;
+    text-orientation:mixed;
+    padding:14px 7px;
+    border-radius:0 8px 8px 0;
+    cursor:pointer;
+    border:1px solid var(--line);
+    border-left:none;
+    transform: translateX(-6px);
+    transition: transform .15s ease;
+    user-select:none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .tab{ transition:none; }
+  }
+  .tab[data-tab="comidas"]{ background:var(--food-soft); color:var(--food); }
+  .tab[data-tab="rutina"]{ background:var(--gym-soft); color:var(--gym); }
+  .tab[data-tab="resumen"]{ background:var(--summary-soft); color:var(--summary); }
+  .tab.active{
+    transform: translateX(0px);
+    box-shadow: -3px 3px 8px rgba(0,0,0,.12);
+  }
+
+  .page{ display:none; }
+  .page.active{ display:block; }
+
+  .page h2{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-size:24px;
+    margin:0 0 4px;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .page .date-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    margin:0 0 18px;
+  }
+
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:14px;
+  }
+
+  .profile-grid{
+    display:grid;
+    grid-template-columns: repeat(3,1fr);
+    gap:10px;
+  }
+  .profile-grid div{ text-align:center; }
+  .profile-grid .val{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:17px;
+  }
+  .profile-grid .lbl{
+    font-size:10.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+
+  .entry-form{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+  }
+  .entry-form textarea{
+    flex:1;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:10px 12px;
+    resize:none;
+    min-height:44px;
+  }
+  .entry-form button{
+    background:var(--food);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:0 16px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .entry-form button:focus-visible,
+  .tab:focus-visible,
+  button:focus-visible{
+    outline: 3px solid var(--summary);
+    outline-offset:2px;
+  }
+
+  .entry-list{ list-style:none; margin:0; padding:0; }
+  .entry-list li{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px dashed var(--line);
+    font-size:14px;
+  }
+  .entry-list li:last-child{ border-bottom:none; }
+  .entry-list .time{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--muted);
+    white-space:nowrap;
+    padding-top:2px;
+  }
+  .entry-list button{
+    background:none;
+    border:none;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:13px;
+    padding:0 2px;
+  }
+  .empty-state{
+    text-align:center;
+    padding:30px 10px;
+    color:var(--muted);
+    font-size:13.5px;
+    line-height:1.5;
+  }
+  .empty-state .icon{
+    font-size:26px;
+    display:block;
+    margin-bottom:8px;
+  }
+  .note{
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.5;
+    border-left:3px solid var(--line);
+    padding-left:10px;
+  }
+
+  .day-tabs{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  .day-tab{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    font-weight:600;
+    padding:6px 12px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .day-tab.active{
+    background:var(--gym);
+    color:#fff;
+    border-color:var(--gym);
+  }
+
+  .exercise-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:10px;
+  }
+  .exercise-card h3{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14.5px;
+    font-weight:600;
+    margin:0 0 8px;
+  }
+  .sets-table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+  }
+  .sets-table th{
+    text-align:left;
+    color:var(--muted);
+    font-weight:500;
+    font-size:10.5px;
+    text-transform:uppercase;
+    letter-spacing:.4px;
+    padding-bottom:4px;
+  }
+  .sets-table td{ padding:3px 0; }
+
+  .feedback-btn{
+    background:var(--summary);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:9px 14px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    cursor:pointer;
+    margin-top:4px;
+  }
+  .feedback-btn:disabled{ opacity:.6; cursor:default; }
+
+  .feedback-note{
+    background:#FFF7D6;
+    border:1px solid #E8DDA0;
+    border-radius:2px;
+    padding:14px 16px;
+    margin-top:12px;
+    font-size:13.5px;
+    line-height:1.55;
+    position:relative;
+    transform:rotate(-0.6deg);
+    box-shadow:0 2px 6px rgba(0,0,0,.08);
+  }
+  .feedback-note::before{
+    content:'';
+    position:absolute;
+    top:-9px; left:50%;
+    transform:translateX(-50%) rotate(-2deg);
+    width:46px;height:16px;
+    background:rgba(210,180,120,.55);
+  }
+</style>
+</head>
+<body>
+
+<div class="notebook">
+  <div class="cover">
+    <div class="holes"><span></span><span></span><span></span><span></span></div>
+    <h1>Bitácora</h1>
+    <p class="sub" id="today-date">—</p>
+    <div class="stats-row">
+      <span class="stat-chip">85 kg</span>
+      <span class="stat-chip">1.77 m</span>
+      <span class="stat-chip">Mantener hábitos</span>
+    </div>
+  </div>
+
+  <div class="pages-wrap">
+    <div class="page-area">
+      <div class="holes"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+
+      <!-- PÁGINA: COMIDAS -->
+      <section class="page active" id="page-comidas">
+        <h2>Comidas</h2>
+        <p class="date-label" id="date-comidas">—</p>
+
+        <div class="entry-form">
+          <textarea id="meal-input" placeholder="¿Qué comiste? Ej: milanesa con puré y una manzana"></textarea>
+          <button id="meal-add">Anotar</button>
+        </div>
+
+        <ul class="entry-list" id="meal-list"></ul>
+        <p class="empty-state" id="meal-empty" style="display:none;">
+          <span class="icon">🍽️</span>
+          Todavía no anotaste nada hoy. Arrancá con la última comida que hiciste.
+        </p>
+
+        <button class="feedback-btn" id="feedback-btn">Pedir feedback del día</button>
+        <div class="feedback-note" id="feedback-note" style="display:none;"></div>
+      </section>
+
+      <!-- PÁGINA: RUTINA -->
+      <section class="page" id="page-rutina">
+        <h2>Rutina</h2>
+        <p class="date-label">Gimnasio · Fútbol</p>
+
+        <div class="card">
+          <div class="profile-grid">
+            <div><div class="val">1x</div><div class="lbl">Gym esta sem.</div></div>
+            <div><div class="val">2x</div><div class="lbl">Fútbol esta sem.</div></div>
+            <div><div class="val">3x</div><div class="lbl">Meta gym</div></div>
+          </div>
+        </div>
+
+        <div class="day-tabs" id="day-tabs">
+          <button class="day-tab active" data-day="espalda">Espalda y Bíceps</button>
+          <button class="day-tab" data-day="piernas">Piernas</button>
+          <button class="day-tab" data-day="pecho">Pecho, Hombro y Tríceps</button>
+        </div>
+
+        <div id="routine-content"></div>
+      </section>
+
+      <!-- PÁGINA: RESUMEN -->
+      <section class="page" id="page-resumen">
+        <h2>Resumen</h2>
+        <p class="date-label">Semana actual</p>
+
+        <div class="card">
+          <div class="profile-grid">
+            <div><div class="val">85</div><div class="lbl">Peso (kg)</div></div>
+            <div><div class="val">1.77</div><div class="lbl">Altura (m)</div></div>
+            <div><div class="val">27.1</div><div class="lbl">IMC</div></div>
+          </div>
+        </div>
+
+        <p class="empty-state">
+          <span class="icon">📊</span>
+          Cuando tengamos comidas y rutina cargándose, esta página va a mostrar el panorama completo de la semana.
+        </p>
+      </section>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="comidas">Comidas</div>
+      <div class="tab" data-tab="rutina">Rutina</div>
+      <div class="tab" data-tab="resumen">Resumen</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- Navegación entre páginas ---
+  const tabs = document.querySelectorAll('.tab');
+  const pages = document.querySelectorAll('.page');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      pages.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('page-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // --- Fecha de hoy ---
+  const todayStr = new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
+  document.getElementById('today-date').textContent = todayStr;
+  document.getElementById('date-comidas').textContent = todayStr;
+
+  // --- Clave de storage por día ---
+  function todayKey() {
+    const d = new Date();
+    return 'meals:' + d.toISOString().slice(0,10);
+  }
+
+  async function loadMeals() {
+    try {
+      const res = await window.storage.get(todayKey());
+      return res ? JSON.parse(res.value) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async function saveMeals(list) {
+    try {
+      await window.storage.set(todayKey(), JSON.stringify(list));
+    } catch (e) {
+      console.error('No se pudo guardar', e);
+    }
+  }
+
+  function renderMeals(list) {
+    const ul = document.getElementById('meal-list');
+    const empty = document.getElementById('meal-empty');
+    ul.innerHTML = '';
+    if (!list.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    list.forEach((m, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span>${m.text}</span>
+        <span class="time">${m.time}</span>
+        <button aria-label="Borrar" data-i="${i}">✕</button>
+      `;
+      ul.appendChild(li);
+    });
+    ul.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const idx = parseInt(btn.dataset.i, 10);
+        const current = await loadMeals();
+        current.splice(idx, 1);
+        await saveMeals(current);
+        renderMeals(current);
+      });
+    });
+  }
+
+  async function init() {
+    const list = await loadMeals();
+    renderMeals(list);
+  }
+  init();
+
+  document.getElementById('meal-add').addEventListener('click', async () => {
+    const input = document.getElementById('meal-input');
+    const text = input.value.trim();
+    if (!text) return;
+    const list = await loadMeals();
+    list.push({ text, time: new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'}) });
+    await saveMeals(list);
+    renderMeals(list);
+    input.value = '';
+  });
+
+  // --- Rutina ---
+  const routineData = {
+    espalda: [
+      { name: 'Jalón al pecho (cable)', weights: [40, 45, 45, 45], reps: [10, 10, 8, 6] },
+      { name: 'Remo iso-lateral', weights: [30, 40, 40, 40], reps: [12, 10, 10, 10] },
+      { name: 'Remo con mancuerna', weights: [17.5, 17.5, 20], reps: [12, 12, 12] },
+      { name: 'Curl martillo (mancuerna)', weights: [10, 10, 10, 10], reps: [10, 10, 10, 6] },
+      { name: 'Curl predicador (barra)', weights: [15, 20, 20, 20], reps: [12, 12, 12, 12] },
+      { name: 'Curl de bíceps inclinado (mancuerna)', weights: [10, 10, 10], reps: [10, 10, 10] },
+    ],
+    piernas: [
+      { name: 'Curl piernas acostado (máquina)', weights: [30, 40, 40, 40], reps: [12, 12, 8, 8] },
+      { name: 'Extensión de pierna', weights: [35, 50, 60], reps: [12, 12, 12] },
+      { name: 'Sentadilla hack', weights: [60, 80, 80, 80], reps: [10, 10, 10, 10] },
+      { name: 'Elevación de gemelos de pie (Smith)', weights: [80, 80, 80, 80], reps: [15, 15, 15, 15] },
+      { name: 'Empuje de caderas (barra)', weights: [60, 60, 70, 70], reps: [10, 12, 12, 12] },
+    ],
+    pecho: null,
+  };
+
+  function renderRoutine(day) {
+    const container = document.getElementById('routine-content');
+    const data = routineData[day];
+    if (!data) {
+      container.innerHTML = `
+        <p class="empty-state">
+          <span class="icon">🗓️</span>
+          Todavía no cargaste este día. Pasámelo cuando quieras y lo sumamos.
+        </p>`;
+      return;
+    }
+    container.innerHTML = data.map(ex => {
+      const rows = ex.weights.map((w, i) => `<tr><td>${i + 1}</td><td>${w} kg</td><td>${ex.reps[i]}</td></tr>`).join('');
+      return `
+        <div class="exercise-card">
+          <h3>${ex.name}</h3>
+          <table class="sets-table">
+            <thead><tr><th>Serie</th><th>Peso</th><th>Reps</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }).join('');
+  }
+
+  document.querySelectorAll('.day-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.day-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderRoutine(btn.dataset.day);
+    });
+  });
+  renderRoutine('espalda');
+
+  // --- Feedback de comidas ---
+  document.getElementById('feedback-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('feedback-btn');
+    const box = document.getElementById('feedback-note');
+    const meals = await loadMeals();
+
+    if (!meals.length) {
+      box.style.display = 'block';
+      box.textContent = 'Todavía no anotaste ninguna comida hoy — cargá algo primero.';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Pensando...';
+    box.style.display = 'block';
+    box.textContent = '';
+
+    try {
+      const mealsText = meals.map(m => `${m.time}: ${m.text}`).join('\n');
+      const prompt = `Sos un asistente breve y cercano (tono argentino, natural, sin exagerar) que da feedback general sobre hábitos alimentarios cotidianos. No hagas diagnósticos médicos, no cuentes calorías exactas, no seas alarmista ni prescriptivo.
+
+Contexto de la persona: 26 años, 85kg, 1.77m, objetivo actual "mantener y mejorar hábitos", entrena fútbol y gimnasio con regularidad.
+
+Comidas anotadas hoy:
+${mealsText}
+
+Dame un feedback general de 3 a 4 oraciones sobre el equilibrio del día (proteína, variedad, verduras/frutas, hidratación si se puede inferir) y una sugerencia concreta y accionable para mañana. Escribí en segunda persona, tono natural y directo, sin bullets ni encabezados.`;
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      const data = await response.json();
+      const text = (data.content || []).map(b => b.text || '').join('\n').trim();
+      box.textContent = text || 'No pude generar el feedback, probá de nuevo.';
+    } catch (e) {
+      box.textContent = 'Hubo un problema pidiendo el feedback. Probá de nuevo en un rato.';
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Pedir feedback del día';
+  });
+</script>
+
+</body>
+</html>

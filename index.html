@@ -335,11 +335,25 @@
     padding:12px 14px;
     margin-bottom:10px;
   }
+  .exercise-card .exercise-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin:0 0 8px;
+  }
   .exercise-card h3{
     font-family:'IBM Plex Sans', sans-serif;
     font-size:14.5px;
     font-weight:600;
-    margin:0 0 8px;
+    margin:0;
+  }
+  .exercise-card .exercise-head button{
+    background:none;
+    border:none;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:13px;
+    padding:0 2px;
   }
   .sets-table{
     width:100%;
@@ -357,6 +371,42 @@
     padding-bottom:4px;
   }
   .sets-table td{ padding:3px 0; }
+  .sets-table td button{
+    background:none;
+    border:none;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:12px;
+    padding:0 2px;
+  }
+  .add-set-row{
+    display:flex;
+    gap:6px;
+    margin-top:8px;
+  }
+  .add-set-row input{
+    width:0;
+    flex:1;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 8px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .add-set-row button{
+    background:var(--gym);
+    color:#fff;
+    border:none;
+    border-radius:6px;
+    padding:0 10px;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    font-weight:600;
+    cursor:pointer;
+    flex-shrink:0;
+  }
 
   .feedback-btn, .btn-secondary{
     border:none;
@@ -494,9 +544,9 @@
     <h1>Bitácora</h1>
     <p class="sub" id="today-date">—</p>
     <div class="stats-row">
-      <span class="stat-chip">85 kg</span>
-      <span class="stat-chip">1.77 m</span>
-      <span class="stat-chip">Mantener hábitos</span>
+      <span class="stat-chip" id="chip-weight">— kg</span>
+      <span class="stat-chip" id="chip-height">— m</span>
+      <span class="stat-chip" id="chip-goal">—</span>
     </div>
   </div>
 
@@ -560,20 +610,34 @@
           <button class="day-tab" data-day="pecho">Pecho, Hombro y Tríceps</button>
         </div>
 
+        <div class="entry-form">
+          <textarea id="exercise-input" placeholder="Nombre del ejercicio nuevo"></textarea>
+          <button id="exercise-add">Agregar</button>
+        </div>
+
         <div id="routine-content"></div>
       </section>
 
       <!-- PÁGINA: RESUMEN -->
       <section class="page" id="page-resumen">
         <h2>Resumen</h2>
-        <p class="date-label">Semana actual</p>
+        <p class="date-label">Tu perfil</p>
 
         <div class="card">
           <div class="profile-grid">
-            <div><div class="val">85</div><div class="lbl">Peso (kg)</div></div>
-            <div><div class="val">1.77</div><div class="lbl">Altura (m)</div></div>
-            <div><div class="val">27.1</div><div class="lbl">IMC</div></div>
+            <div><div class="val" id="summary-weight">—</div><div class="lbl">Peso (kg)</div></div>
+            <div><div class="val" id="summary-height">—</div><div class="lbl">Altura (m)</div></div>
+            <div><div class="val" id="summary-bmi">—</div><div class="lbl">IMC</div></div>
           </div>
+        </div>
+
+        <div class="card">
+          <h3>Editar perfil</h3>
+          <p class="note" style="margin-bottom:10px;">Estos datos son tuyos: no se comparten con nadie. Si iniciás sesión en Cuenta, se sincronizan entre tus dispositivos.</p>
+          <input class="auth-input" type="number" step="0.1" min="0" id="profile-weight" placeholder="Peso (kg)">
+          <input class="auth-input" type="number" step="0.01" min="0" id="profile-height" placeholder="Altura (m)">
+          <input class="auth-input" type="text" id="profile-goal" placeholder="Objetivo (ej: Mantener hábitos)">
+          <button class="feedback-btn" id="profile-save">Guardar perfil</button>
         </div>
 
         <p class="empty-state">
@@ -827,48 +891,107 @@
     handleFoodKnowledge(text);
   });
 
-  // --- Rutina ---
-  const routineData = {
+  // --- Rutina (privada por cuenta, editable — nada de esto se comparte entre usuarios) ---
+  const DEFAULT_ROUTINE = {
     espalda: [
-      { name: 'Jalón al pecho (cable)', weights: [40, 45, 45, 45], reps: [10, 10, 8, 6] },
-      { name: 'Remo iso-lateral', weights: [30, 40, 40, 40], reps: [12, 10, 10, 10] },
-      { name: 'Remo con mancuerna', weights: [17.5, 17.5, 20], reps: [12, 12, 12] },
-      { name: 'Curl martillo (mancuerna)', weights: [10, 10, 10, 10], reps: [10, 10, 10, 6] },
-      { name: 'Curl predicador (barra)', weights: [15, 20, 20, 20], reps: [12, 12, 12, 12] },
-      { name: 'Curl de bíceps inclinado (mancuerna)', weights: [10, 10, 10], reps: [10, 10, 10] },
+      { name: 'Jalón al pecho (cable)', sets: [{weight:40,reps:10},{weight:45,reps:10},{weight:45,reps:8},{weight:45,reps:6}] },
+      { name: 'Remo iso-lateral', sets: [{weight:30,reps:12},{weight:40,reps:10},{weight:40,reps:10},{weight:40,reps:10}] },
+      { name: 'Remo con mancuerna', sets: [{weight:17.5,reps:12},{weight:17.5,reps:12},{weight:20,reps:12}] },
+      { name: 'Curl martillo (mancuerna)', sets: [{weight:10,reps:10},{weight:10,reps:10},{weight:10,reps:10},{weight:10,reps:6}] },
+      { name: 'Curl predicador (barra)', sets: [{weight:15,reps:12},{weight:20,reps:12},{weight:20,reps:12},{weight:20,reps:12}] },
+      { name: 'Curl de bíceps inclinado (mancuerna)', sets: [{weight:10,reps:10},{weight:10,reps:10},{weight:10,reps:10}] },
     ],
     piernas: [
-      { name: 'Curl piernas acostado (máquina)', weights: [30, 40, 40, 40], reps: [12, 12, 8, 8] },
-      { name: 'Extensión de pierna', weights: [35, 50, 60], reps: [12, 12, 12] },
-      { name: 'Sentadilla hack', weights: [60, 80, 80, 80], reps: [10, 10, 10, 10] },
-      { name: 'Elevación de gemelos de pie (Smith)', weights: [80, 80, 80, 80], reps: [15, 15, 15, 15] },
-      { name: 'Empuje de caderas (barra)', weights: [60, 60, 70, 70], reps: [10, 12, 12, 12] },
+      { name: 'Curl piernas acostado (máquina)', sets: [{weight:30,reps:12},{weight:40,reps:12},{weight:40,reps:8},{weight:40,reps:8}] },
+      { name: 'Extensión de pierna', sets: [{weight:35,reps:12},{weight:50,reps:12},{weight:60,reps:12}] },
+      { name: 'Sentadilla hack', sets: [{weight:60,reps:10},{weight:80,reps:10},{weight:80,reps:10},{weight:80,reps:10}] },
+      { name: 'Elevación de gemelos de pie (Smith)', sets: [{weight:80,reps:15},{weight:80,reps:15},{weight:80,reps:15},{weight:80,reps:15}] },
+      { name: 'Empuje de caderas (barra)', sets: [{weight:60,reps:10},{weight:60,reps:12},{weight:70,reps:12},{weight:70,reps:12}] },
     ],
-    pecho: null,
+    pecho: [],
   };
 
+  let currentRoutineDay = 'espalda';
+
+  function routineKey(day) { return 'bitacora:routine:' + day; }
+
+  function loadRoutine(day) {
+    try {
+      const raw = localStorage.getItem(routineKey(day));
+      if (raw !== null) return JSON.parse(raw);
+    } catch (e) {}
+    return JSON.parse(JSON.stringify(DEFAULT_ROUTINE[day] || []));
+  }
+
+  function persistRoutine(day, exercises) {
+    localStorage.setItem(routineKey(day), JSON.stringify(exercises));
+    if (window.BitacoraSync) window.BitacoraSync.pushRoutine(day, exercises);
+  }
+
   function renderRoutine(day) {
+    currentRoutineDay = day;
     const container = document.getElementById('routine-content');
-    const data = routineData[day];
-    if (!data) {
+    const exercises = loadRoutine(day);
+    if (!exercises.length) {
       container.innerHTML = `
         <p class="empty-state">
           <span class="icon">🗓️</span>
-          Todavía no cargaste este día. Pasámelo cuando quieras y lo sumamos.
+          Todavía no cargaste ejercicios para este día. Agregá el primero arriba.
         </p>`;
       return;
     }
-    container.innerHTML = data.map(ex => {
-      const rows = ex.weights.map((w, i) => `<tr><td>${i + 1}</td><td>${w} kg</td><td>${ex.reps[i]}</td></tr>`).join('');
+    container.innerHTML = exercises.map((ex, exIdx) => {
+      const rows = ex.sets.map((s, i) => `
+        <tr>
+          <td>${i + 1}</td><td>${s.weight} kg</td><td>${s.reps}</td>
+          <td><button class="del-set" data-ex="${exIdx}" data-set="${i}" aria-label="Borrar serie">✕</button></td>
+        </tr>`).join('') || `<tr><td colspan="4" style="color:var(--muted); padding:4px 0;">Sin series todavía</td></tr>`;
       return `
         <div class="exercise-card">
-          <h3>${ex.name}</h3>
+          <div class="exercise-head">
+            <h3>${ex.name}</h3>
+            <button class="del-exercise" data-ex="${exIdx}" aria-label="Borrar ejercicio">✕</button>
+          </div>
           <table class="sets-table">
-            <thead><tr><th>Serie</th><th>Peso</th><th>Reps</th></tr></thead>
+            <thead><tr><th>Serie</th><th>Peso</th><th>Reps</th><th></th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
+          <div class="add-set-row">
+            <input type="number" step="0.5" min="0" placeholder="kg" class="set-weight" data-ex="${exIdx}">
+            <input type="number" step="1" min="0" placeholder="reps" class="set-reps" data-ex="${exIdx}">
+            <button class="add-set" data-ex="${exIdx}">+ Serie</button>
+          </div>
         </div>`;
     }).join('');
+
+    container.querySelectorAll('.del-exercise').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = loadRoutine(day);
+        current.splice(parseInt(btn.dataset.ex, 10), 1);
+        persistRoutine(day, current);
+        renderRoutine(day);
+      });
+    });
+    container.querySelectorAll('.del-set').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = loadRoutine(day);
+        current[parseInt(btn.dataset.ex, 10)].sets.splice(parseInt(btn.dataset.set, 10), 1);
+        persistRoutine(day, current);
+        renderRoutine(day);
+      });
+    });
+    container.querySelectorAll('.add-set').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const exIdx = parseInt(btn.dataset.ex, 10);
+        const weight = parseFloat(container.querySelector(`.set-weight[data-ex="${exIdx}"]`).value);
+        const reps = parseInt(container.querySelector(`.set-reps[data-ex="${exIdx}"]`).value, 10);
+        if (!weight || !reps) return;
+        const current = loadRoutine(day);
+        current[exIdx].sets.push({ weight, reps });
+        persistRoutine(day, current);
+        renderRoutine(day);
+      });
+    });
   }
 
   document.querySelectorAll('.day-tab').forEach(btn => {
@@ -878,7 +1001,63 @@
       renderRoutine(btn.dataset.day);
     });
   });
+
+  document.getElementById('exercise-add').addEventListener('click', () => {
+    const input = document.getElementById('exercise-input');
+    const name = input.value.trim();
+    if (!name) return;
+    const current = loadRoutine(currentRoutineDay);
+    current.push({ name, sets: [] });
+    persistRoutine(currentRoutineDay, current);
+    renderRoutine(currentRoutineDay);
+    input.value = '';
+  });
+
+  window.refreshRoutinePage = () => renderRoutine(currentRoutineDay);
   renderRoutine('espalda');
+
+  // --- Perfil (privado por cuenta: peso, altura, objetivo) ---
+  const PROFILE_KEY = 'bitacora:profile';
+  const DEFAULT_PROFILE = { weight: 85, height: 1.77, goal: 'Mantener hábitos' };
+
+  function loadProfile() {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (raw) return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+    } catch (e) {}
+    return { ...DEFAULT_PROFILE };
+  }
+
+  function persistProfile(profile) {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    if (window.BitacoraSync) window.BitacoraSync.pushProfile(profile);
+  }
+
+  function renderProfileUI() {
+    const p = loadProfile();
+    document.getElementById('chip-weight').textContent = `${p.weight} kg`;
+    document.getElementById('chip-height').textContent = `${p.height} m`;
+    document.getElementById('chip-goal').textContent = p.goal;
+    document.getElementById('summary-weight').textContent = p.weight;
+    document.getElementById('summary-height').textContent = p.height;
+    const bmi = p.height ? (p.weight / (p.height * p.height)) : 0;
+    document.getElementById('summary-bmi').textContent = bmi ? bmi.toFixed(1) : '—';
+    document.getElementById('profile-weight').value = p.weight;
+    document.getElementById('profile-height').value = p.height;
+    document.getElementById('profile-goal').value = p.goal;
+  }
+
+  document.getElementById('profile-save').addEventListener('click', () => {
+    const weight = parseFloat(document.getElementById('profile-weight').value);
+    const height = parseFloat(document.getElementById('profile-height').value);
+    const goal = document.getElementById('profile-goal').value.trim();
+    if (!weight || !height || !goal) return;
+    persistProfile({ weight, height, goal });
+    renderProfileUI();
+  });
+
+  window.refreshProfileUI = renderProfileUI;
+  renderProfileUI();
 
   // --- Exportar día (texto plano al portapapeles) ---
   function buildExportText(date, meals) {

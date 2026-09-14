@@ -50,8 +50,10 @@ async function init() {
     authApi.onAuthStateChanged(auth, (user) => {
       state.user = user;
       if (user) {
-        watchUserCollection('meals', 'bitacora:meals:');
-        watchUserCollection('feedback', 'bitacora:feedback:');
+        watchUserCollection('meals', 'bitacora:meals:', (data) => JSON.stringify(data.list || []), window.refreshComidasPage);
+        watchUserCollection('feedback', 'bitacora:feedback:', (data) => data.text || '', window.refreshComidasPage);
+        watchUserCollection('routine', 'bitacora:routine:', (data) => JSON.stringify(data.exercises || []), window.refreshRoutinePage);
+        watchUserDoc('profile', 'data', 'bitacora:profile', (data) => JSON.stringify(data || {}), window.refreshProfileUI);
       }
       state.authListeners.forEach((cb) => cb(user));
     });
@@ -86,9 +88,11 @@ async function logOut() {
   await authApi.signOut(auth);
 }
 
-// --- Sync de comidas / feedback por usuario (privado, users/{uid}/...) ---
+// --- Sync privado por usuario (users/{uid}/...): comidas, feedback, rutina, perfil ---
+// Nada de esto se comparte entre cuentas — cada uid tiene sus propios documentos, a
+// diferencia de foodKnowledge (que sí es compartida a propósito, ver firestore.rules).
 
-function watchUserCollection(subcollection, localPrefix) {
+function watchUserCollection(subcollection, localPrefix, valueFn, refreshFn) {
   const uid = state.user.uid;
   const colRef = firestoreApi.collection(db, 'users', uid, subcollection);
   firestoreApi.onSnapshot(colRef, (snap) => {
@@ -97,13 +101,20 @@ function watchUserCollection(subcollection, localPrefix) {
       if (change.type === 'removed') {
         localStorage.removeItem(key);
       } else {
-        const data = change.doc.data();
-        const value = subcollection === 'meals' ? JSON.stringify(data.list || []) : (data.text || '');
-        localStorage.setItem(key, value);
+        localStorage.setItem(key, valueFn(change.doc.data()));
       }
     });
-    if (typeof window.refreshComidasPage === 'function') {
-      window.refreshComidasPage();
+    if (typeof refreshFn === 'function') refreshFn();
+  }, (err) => console.warn('[sync] onSnapshot', subcollection, err));
+}
+
+function watchUserDoc(subcollection, docId, localKey, valueFn, refreshFn) {
+  const uid = state.user.uid;
+  const ref = firestoreApi.doc(db, 'users', uid, subcollection, docId);
+  firestoreApi.onSnapshot(ref, (snap) => {
+    if (snap.exists()) {
+      localStorage.setItem(localKey, valueFn(snap.data()));
+      if (typeof refreshFn === 'function') refreshFn();
     }
   }, (err) => console.warn('[sync] onSnapshot', subcollection, err));
 }
@@ -125,6 +136,26 @@ async function pushFeedback(dateKey, text) {
     await firestoreApi.setDoc(ref, { text, updatedAt: firestoreApi.serverTimestamp() });
   } catch (err) {
     console.warn('[sync] pushFeedback', err);
+  }
+}
+
+async function pushRoutine(day, exercises) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'routine', day);
+    await firestoreApi.setDoc(ref, { exercises, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushRoutine', err);
+  }
+}
+
+async function pushProfile(profile) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'profile', 'data');
+    await firestoreApi.setDoc(ref, { ...profile, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushProfile', err);
   }
 }
 
@@ -210,6 +241,8 @@ window.BitacoraSync = {
   logOut,
   pushMeals,
   pushFeedback,
+  pushRoutine,
+  pushProfile,
   lookupFoodKnowledge,
   saveFoodKnowledge,
   queueFoodQuery,

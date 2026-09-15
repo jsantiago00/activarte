@@ -546,7 +546,7 @@
 <div class="notebook">
   <div class="cover">
     <div class="holes"><span></span><span></span><span></span><span></span></div>
-    <h1>Bitácora</h1>
+    <h1>ActivArte</h1>
     <p class="sub" id="today-date">—</p>
     <div class="stats-row">
       <span class="stat-chip" id="chip-weight">— kg</span>
@@ -1179,7 +1179,7 @@
   // --- Exportar día (texto plano al portapapeles) ---
   function buildExportText(date, meals) {
     const label = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const header = `Bitácora — ${label}`;
+    const header = `ActivArte — ${label}`;
     const divider = '-'.repeat(Math.min(header.length, 40));
     const lines = meals.map(m => `${m.time} — ${m.text}`);
     return [header, divider, ...lines].join('\n');

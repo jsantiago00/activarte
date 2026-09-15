@@ -12,7 +12,7 @@ No hace falta que digas nada de esto en tu respuesta (ni "acá va en el formato 
 El texto que te pegan empieza así:
 
 ```
-Bitácora — <día de la semana>, <fecha>
+ActivArte — <día de la semana>, <fecha>
 ------------------------
 <hora> — <comida>
 <hora> — <comida>

@@ -724,15 +724,26 @@
         </div>
 
         <!-- Vista: detalle de una rutina -->
-        <div id="routine-detail-view" style="display:none;">
-          <button class="btn-secondary" id="routine-back-btn">‹ Volver a rutinas</button>
+        <!-- Vista: ver rutina (solo lectura) -->
+        <div id="routine-view-mode" style="display:none;">
+          <button class="btn-secondary" id="routine-view-back-btn">‹ Volver a rutinas</button>
+
+          <div class="card" style="margin-top:12px;">
+            <h3 id="routine-view-name">—</h3>
+            <p class="note" id="routine-view-meta">—</p>
+            <button class="feedback-btn" id="routine-start-training-btn" style="width:100%; margin-top:8px;">▶ Comenzar entrenamiento</button>
+            <button class="btn-secondary" id="routine-edit-btn" style="width:100%; margin-top:8px;">✎ Editar rutina</button>
+          </div>
+
+          <div id="routine-view-exercise-list"></div>
+        </div>
+
+        <!-- Vista: editar rutina -->
+        <div id="routine-edit-view" style="display:none;">
+          <button class="btn-secondary" id="routine-back-btn">‹ Volver a la rutina</button>
 
           <div class="card" style="margin-top:12px;">
             <h3 id="routine-detail-name">—</h3>
-            <button class="feedback-btn" id="routine-start-training-btn" style="width:100%; margin-top:4px;">▶ Comenzar entrenamiento</button>
-          </div>
-
-          <div class="card">
             <label class="note" style="display:block; margin-bottom:6px;">Descanso por defecto entre series (segundos)</label>
             <div style="display:flex; gap:8px;">
               <input class="auth-input" type="number" min="0" step="5" id="routine-rest-default" style="max-width:120px; margin-bottom:0;">
@@ -1101,24 +1112,43 @@
       { key: 'pecho', name: 'Pecho, Hombro y Tríceps' },
     ];
     const routines = [];
+    const historyEntries = [];
     legacyDays.forEach(d => {
       let legacyExercises = [];
       try { legacyExercises = JSON.parse(localStorage.getItem('bitacora:routine:' + d.key) || '[]'); } catch (e) {}
-      if (legacyExercises.length) {
-        routines.push({
+      if (!legacyExercises.length) return;
+      const routineId = genId();
+      routines.push({
+        id: routineId,
+        name: d.name,
+        restTimer: 90,
+        exercises: legacyExercises.map(ex => ({
           id: genId(),
-          name: d.name,
-          restTimer: 90,
-          exercises: legacyExercises.map(ex => ({
-            id: genId(),
-            name: ex.name,
-            targetSets: (ex.sets && ex.sets.length) || 3,
-            restTimer: null,
-          })),
+          name: ex.name,
+          targetSets: (ex.sets && ex.sets.length) || 3,
+          restTimer: null,
+        })),
+      });
+      // El peso/reps que ya tenías cargado no se pierde: se guarda como el primer
+      // registro del historial, así "última vez" en el visor muestra tus datos reales.
+      const withSets = legacyExercises.filter(ex => ex.sets && ex.sets.length);
+      if (withSets.length) {
+        historyEntries.push({
+          id: genId(),
+          routineId,
+          routineName: d.name,
+          date: new Date().toISOString(),
+          durationSeconds: 0,
+          exercises: withSets.map(ex => ({ name: ex.name, sets: ex.sets })),
         });
       }
     });
     localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines));
+    if (historyEntries.length) {
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem('bitacora:workoutHistory') || '[]'); } catch (e) {}
+      localStorage.setItem('bitacora:workoutHistory', JSON.stringify(history.concat(historyEntries)));
+    }
   }
   migrateLegacyRoutinesIfNeeded();
 
@@ -1159,24 +1189,72 @@
   function openRoutineDetail(id) {
     currentRoutineId = id;
     document.getElementById('routines-list-view').style.display = 'none';
-    document.getElementById('routine-detail-view').style.display = 'block';
-    renderRoutineDetail();
+    document.getElementById('routine-view-mode').style.display = 'block';
+    renderRoutineView();
   }
 
   function closeRoutineDetail() {
     currentRoutineId = null;
-    document.getElementById('routine-detail-view').style.display = 'none';
+    document.getElementById('routine-view-mode').style.display = 'none';
+    document.getElementById('routine-edit-view').style.display = 'none';
     document.getElementById('routines-list-view').style.display = 'block';
     renderRoutinesList();
   }
-  document.getElementById('routine-back-btn').addEventListener('click', closeRoutineDetail);
+  document.getElementById('routine-view-back-btn').addEventListener('click', closeRoutineDetail);
+
+  function openEditMode() {
+    document.getElementById('routine-view-mode').style.display = 'none';
+    document.getElementById('routine-edit-view').style.display = 'block';
+    renderRoutineDetail();
+  }
+  function closeEditMode() {
+    document.getElementById('routine-edit-view').style.display = 'none';
+    document.getElementById('routine-view-mode').style.display = 'block';
+    renderRoutineView();
+  }
+  document.getElementById('routine-edit-btn').addEventListener('click', openEditMode);
+  document.getElementById('routine-back-btn').addEventListener('click', closeEditMode);
+
+  // Vista de solo lectura: ejercicios + lo último que se hizo (del historial de
+  // entrenamientos), así el detalle de kg/reps queda siempre visible sin tener que editar.
+  function renderRoutineView() {
+    const r = findRoutine(currentRoutineId);
+    if (!r) { closeRoutineDetail(); return; }
+    document.getElementById('routine-view-name').textContent = r.name;
+    document.getElementById('routine-view-meta').textContent =
+      `${r.exercises.length} ejercicio${r.exercises.length === 1 ? '' : 's'} · descanso ${r.restTimer}s`;
+    document.getElementById('routine-start-training-btn').disabled = !r.exercises.length;
+
+    const last = lastSessionFor(r.id);
+    const list = document.getElementById('routine-view-exercise-list');
+    if (!r.exercises.length) {
+      list.innerHTML = `
+        <p class="empty-state">
+          <span class="icon">🗓️</span>
+          Todavía no agregaste ejercicios. Tocá "Editar rutina" para sumar el primero.
+        </p>`;
+      return;
+    }
+    list.innerHTML = r.exercises.map(ex => {
+      const lastEx = last && last.exercises.find(e => e.name === ex.name);
+      const lastText = (lastEx && lastEx.sets.length)
+        ? `Última vez: ${lastEx.sets.map(s => `${s.weight}kg×${s.reps}`).join(', ')}`
+        : 'Todavía no la entrenaste';
+      const restText = (ex.restTimer !== null && ex.restTimer !== undefined) ? `${ex.restTimer}s (propio)` : `${r.restTimer}s`;
+      return `
+        <div class="exercise-card">
+          <div class="exercise-head"><h3>${ex.name}</h3></div>
+          <p class="routine-row-meta">${ex.targetSets} series · descanso ${restText}</p>
+          <p class="note" style="margin-top:6px;">${lastText}</p>
+        </div>`;
+    }).join('');
+  }
 
   function renderRoutineDetail() {
     const r = findRoutine(currentRoutineId);
     if (!r) { closeRoutineDetail(); return; }
     document.getElementById('routine-detail-name').textContent = r.name;
     document.getElementById('routine-rest-default').value = r.restTimer;
-    document.getElementById('routine-start-training-btn').disabled = !r.exercises.length;
 
     const list = document.getElementById('routine-exercise-list');
     if (!r.exercises.length) {
@@ -1254,8 +1332,9 @@
   });
 
   window.refreshRoutinePage = () => {
-    if (currentRoutineId) renderRoutineDetail();
-    else renderRoutinesList();
+    if (!currentRoutineId) { renderRoutinesList(); return; }
+    const editing = document.getElementById('routine-edit-view').style.display !== 'none';
+    if (editing) renderRoutineDetail(); else renderRoutineView();
   };
   renderRoutinesList();
 
@@ -1499,7 +1578,8 @@
     const session = loadActiveSession();
     if (!session) return;
     document.getElementById('routines-list-view').style.display = 'none';
-    document.getElementById('routine-detail-view').style.display = 'none';
+    document.getElementById('routine-view-mode').style.display = 'none';
+    document.getElementById('routine-edit-view').style.display = 'none';
     document.getElementById('training-active-view').style.display = 'block';
     startStopwatch(session.startedAt);
     renderTrainingActive();

@@ -148,6 +148,7 @@
   }
   .tab[data-tab="comidas"]{ background:var(--food-soft); color:var(--food); }
   .tab[data-tab="rutina"]{ background:var(--gym-soft); color:var(--gym); }
+  .tab[data-tab="entrenar"]{ background:var(--gym); color:#fff; }
   .tab[data-tab="resumen"]{ background:var(--summary-soft); color:var(--summary); }
   .tab[data-tab="cuenta"]{ background:var(--paper-card); color:var(--ink); }
   .tab.active{
@@ -305,29 +306,6 @@
   }
   .date-nav button:disabled{ opacity:.35; cursor:default; }
 
-  .day-tabs{
-    display:flex;
-    gap:8px;
-    margin-bottom:16px;
-    flex-wrap:wrap;
-  }
-  .day-tab{
-    font-family:'IBM Plex Sans', sans-serif;
-    font-size:12px;
-    font-weight:600;
-    padding:6px 12px;
-    border-radius:20px;
-    border:1px solid var(--line);
-    background:#fff;
-    color:var(--muted);
-    cursor:pointer;
-  }
-  .day-tab.active{
-    background:var(--gym);
-    color:#fff;
-    border-color:var(--gym);
-  }
-
   .exercise-card{
     background:#fff;
     border:1px solid var(--line);
@@ -379,35 +357,6 @@
     font-size:12px;
     padding:0 2px;
   }
-  .add-set-row{
-    display:flex;
-    gap:6px;
-    margin-top:8px;
-  }
-  .add-set-row input{
-    width:0;
-    flex:1;
-    font-family:'IBM Plex Mono', monospace;
-    font-size:12.5px;
-    border:1px solid var(--line);
-    border-radius:6px;
-    padding:5px 8px;
-    background:#fff;
-    color:var(--ink);
-  }
-  .add-set-row button{
-    background:var(--gym);
-    color:#fff;
-    border:none;
-    border-radius:6px;
-    padding:0 10px;
-    font-family:'IBM Plex Sans', sans-serif;
-    font-size:12px;
-    font-weight:600;
-    cursor:pointer;
-    flex-shrink:0;
-  }
-
   .feedback-btn, .btn-secondary{
     border:none;
     border-radius:8px;
@@ -592,6 +541,98 @@
     text-decoration:line-through;
     color:var(--muted);
   }
+
+  .routine-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:12px 0;
+    border-bottom:1px dashed var(--line);
+    cursor:pointer;
+  }
+  .routine-row:last-child{ border-bottom:none; }
+  .routine-row .routine-row-name{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:14.5px;
+  }
+  .routine-row .routine-row-meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--muted);
+  }
+  .routine-row .chevron{ color:var(--muted); font-size:16px; }
+
+  .exercise-config-row{
+    display:flex;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-top:8px;
+  }
+  .exercise-config-row label{
+    font-size:11px;
+    color:var(--muted);
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+  }
+  .exercise-config-row input{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:5px 8px;
+    width:100px;
+    background:#fff;
+    color:var(--ink);
+  }
+
+  .stopwatch{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:32px;
+    font-weight:600;
+    color:var(--ink);
+  }
+
+  .rest-banner{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:var(--gym-soft);
+    border:1px solid var(--gym);
+    border-radius:8px;
+    padding:10px 14px;
+    margin-bottom:14px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:14px;
+    font-weight:600;
+    color:var(--gym);
+  }
+  .rest-banner button{
+    font-size:11px;
+    padding:5px 10px;
+    margin-top:0;
+  }
+
+  .sets-table input[type="number"]{
+    width:56px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:3px 5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .sets-table .rest-btn{
+    background:none;
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--gym);
+    font-size:11px;
+    padding:3px 7px;
+    cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -652,42 +693,92 @@
       <!-- PÁGINA: RUTINA -->
       <section class="page" id="page-rutina">
         <h2>Rutina</h2>
-        <p class="date-label">Gimnasio · Fútbol</p>
+        <p class="date-label">Tus plantillas de rutina</p>
 
-        <div class="card">
-          <div class="profile-grid">
-            <div><div class="val">1x</div><div class="lbl">Gym esta sem.</div></div>
-            <div><div class="val">2x</div><div class="lbl">Fútbol esta sem.</div></div>
-            <div><div class="val">3x</div><div class="lbl">Meta gym</div></div>
+        <!-- Vista: lista de rutinas -->
+        <div id="routines-list-view">
+          <ul class="entry-list" id="routines-list"></ul>
+          <p class="empty-state" id="routines-empty" style="display:none;">
+            <span class="icon">🗒️</span>
+            Todavía no creaste ninguna rutina. Armá la primera abajo.
+          </p>
+
+          <div class="entry-form">
+            <textarea id="routine-name-input" placeholder="Nombre de la rutina nueva (ej: Espalda y Bíceps)"></textarea>
+            <button id="routine-add">Crear</button>
+          </div>
+
+          <button class="btn-secondary" id="export-routine-btn">Exportar rutinas</button>
+          <div id="routine-export-fallback" style="display:none;">
+            <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
+            <textarea class="plain-textarea mono" id="routine-export-textarea" readonly></textarea>
+          </div>
+
+          <div class="feedback-note" id="routine-analysis-note" style="display:none;"></div>
+
+          <div class="card">
+            <h3>Importar análisis de rutina</h3>
+            <p class="note" style="margin-bottom:10px;">Pegá acá lo que te respondió Claude sobre tus rutinas. Esto no se repite seguido — solo cuando cambiás algo importante.</p>
+            <textarea class="plain-textarea" id="routine-analysis-input" placeholder="Pegá acá el análisis..."></textarea>
+            <button class="feedback-btn" id="routine-analysis-save">Guardar análisis</button>
           </div>
         </div>
 
-        <div class="day-tabs" id="day-tabs">
-          <button class="day-tab active" data-day="espalda">Espalda y Bíceps</button>
-          <button class="day-tab" data-day="piernas">Piernas</button>
-          <button class="day-tab" data-day="pecho">Pecho, Hombro y Tríceps</button>
+        <!-- Vista: detalle de una rutina -->
+        <div id="routine-detail-view" style="display:none;">
+          <button class="btn-secondary" id="routine-back-btn">‹ Volver a rutinas</button>
+
+          <div class="card" style="margin-top:12px;">
+            <h3 id="routine-detail-name">—</h3>
+            <label class="note" style="display:block; margin-bottom:6px;">Descanso por defecto entre series (segundos)</label>
+            <div style="display:flex; gap:8px;">
+              <input class="auth-input" type="number" min="0" step="5" id="routine-rest-default" style="max-width:120px; margin-bottom:0;">
+              <button class="btn-secondary" id="routine-rest-save">Guardar</button>
+            </div>
+          </div>
+
+          <div id="routine-exercise-list"></div>
+
+          <div class="entry-form">
+            <textarea id="routine-exercise-input" placeholder="Nombre del ejercicio nuevo"></textarea>
+            <button id="routine-exercise-add">Agregar</button>
+          </div>
+
+          <button class="btn-secondary" id="routine-delete-btn" style="margin-top:14px; color:var(--food); border-color:var(--food);">Eliminar esta rutina</button>
+        </div>
+      </section>
+
+      <!-- PÁGINA: ENTRENAMIENTO -->
+      <section class="page" id="page-entrenar">
+        <h2>Entrenar</h2>
+
+        <div id="training-setup-view">
+          <p class="date-label">Elegí una rutina para empezar</p>
+          <select class="auth-input" id="training-routine-select"></select>
+          <button class="feedback-btn" id="training-start-btn">Comenzar entrenamiento</button>
+          <p class="empty-state" id="training-no-routines" style="display:none;">
+            <span class="icon">🏋️</span>
+            Todavía no tenés rutinas creadas. Armá una en la pestaña Rutina primero.
+          </p>
         </div>
 
-        <div class="entry-form">
-          <textarea id="exercise-input" placeholder="Nombre del ejercicio nuevo"></textarea>
-          <button id="exercise-add">Agregar</button>
-        </div>
+        <div id="training-active-view" style="display:none;">
+          <div class="card" style="text-align:center;">
+            <p class="date-label" style="margin:0 0 4px;" id="training-routine-name">—</p>
+            <div class="stopwatch" id="training-stopwatch">00:00</div>
+          </div>
 
-        <div id="routine-content"></div>
+          <div id="training-rest-banner" class="rest-banner" style="display:none;">
+            <span id="training-rest-text">Descanso: 90s</span>
+            <button class="btn-secondary" id="training-rest-cancel">Saltear</button>
+          </div>
 
-        <button class="btn-secondary" id="export-routine-btn">Exportar rutina</button>
-        <div id="routine-export-fallback" style="display:none;">
-          <p class="note">No se pudo copiar automáticamente. Seleccioná el texto y copialo con Ctrl+C.</p>
-          <textarea class="plain-textarea mono" id="routine-export-textarea" readonly></textarea>
-        </div>
+          <div id="training-exercise-list"></div>
 
-        <div class="feedback-note" id="routine-analysis-note" style="display:none;"></div>
-
-        <div class="card">
-          <h3>Importar análisis de rutina</h3>
-          <p class="note" style="margin-bottom:10px;">Pegá acá lo que te respondió Claude sobre tu rutina completa. Esto no se repite seguido — solo cuando cambiás algo importante.</p>
-          <textarea class="plain-textarea" id="routine-analysis-input" placeholder="Pegá acá el análisis..."></textarea>
-          <button class="feedback-btn" id="routine-analysis-save">Guardar análisis</button>
+          <div style="display:flex; gap:8px; margin-top:6px;">
+            <button class="btn-secondary" id="training-cancel-btn">Cancelar</button>
+            <button class="feedback-btn" id="training-finish-btn">Finalizar entrenamiento</button>
+          </div>
         </div>
       </section>
 
@@ -779,6 +870,7 @@
     <div class="tabs">
       <div class="tab active" data-tab="comidas">Comidas</div>
       <div class="tab" data-tab="rutina">Rutina</div>
+      <div class="tab" data-tab="entrenar">Entrenar</div>
       <div class="tab" data-tab="resumen">Personaje</div>
       <div class="tab" data-tab="cuenta">Cuenta</div>
     </div>
@@ -986,141 +1078,222 @@
     syncPendingDayState(selectedDate);
   });
 
-  // --- Rutina (privada por cuenta, editable — nada de esto se comparte entre usuarios) ---
-  // Sin datos de ejemplo precargados: cada cuenta arranca vacía y carga sus propios
-  // ejercicios. Lo único "de fábrica" es el estado vacío que ya muestra renderRoutine().
-  let currentRoutineDay = 'espalda';
+  // --- Rutinas: plantillas con nombre (privadas por cuenta) ---
+  // Modelo nuevo: N rutinas con nombre propio (no 3 días fijos), cada una con descanso por
+  // defecto + lista de ejercicios (nombre, series objetivo, descanso propio opcional). El
+  // peso/reps reales de cada serie ya NO viven acá — eso es de la sesión de Entrenamiento
+  // (bitacora:workoutHistory), la plantilla es solo la estructura.
+  const ROUTINES_KEY = 'bitacora:routines';
+  let currentRoutineId = null;
 
-  function routineKey(day) { return 'bitacora:routine:' + day; }
+  function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
-  function loadRoutine(day) {
+  function loadRoutines() {
     try {
-      const raw = localStorage.getItem(routineKey(day));
+      const raw = localStorage.getItem(ROUTINES_KEY);
       if (raw !== null) return JSON.parse(raw);
     } catch (e) {}
     return [];
   }
 
-  function persistRoutine(day, exercises) {
-    localStorage.setItem(routineKey(day), JSON.stringify(exercises));
-    if (window.BitacoraSync) window.BitacoraSync.pushRoutine(day, exercises);
+  function persistRoutines(routines) {
+    localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines));
+    if (window.BitacoraSync) window.BitacoraSync.pushRoutines(routines);
   }
 
-  function renderRoutine(day) {
-    currentRoutineDay = day;
-    const container = document.getElementById('routine-content');
-    const exercises = loadRoutine(day);
-    if (!exercises.length) {
-      container.innerHTML = `
-        <p class="empty-state">
-          <span class="icon">🗓️</span>
-          Todavía no cargaste ejercicios para este día. Agregá el primero arriba.
-        </p>`;
-      return;
-    }
-    container.innerHTML = exercises.map((ex, exIdx) => {
-      const rows = ex.sets.map((s, i) => `
-        <tr>
-          <td>${i + 1}</td><td>${s.weight} kg</td><td>${s.reps}</td>
-          <td><button class="del-set" data-ex="${exIdx}" data-set="${i}" aria-label="Borrar serie">✕</button></td>
-        </tr>`).join('') || `<tr><td colspan="4" style="color:var(--muted); padding:4px 0;">Sin series todavía</td></tr>`;
-      return `
-        <div class="exercise-card">
-          <div class="exercise-head">
-            <h3>${ex.name}</h3>
-            <button class="del-exercise" data-ex="${exIdx}" aria-label="Borrar ejercicio">✕</button>
+  function findRoutine(id) { return loadRoutines().find(r => r.id === id) || null; }
+
+  // Migración única desde el modelo viejo (día fijo con sets ya cargados) a rutinas con
+  // nombre. Se corre una sola vez: si ya existe bitacora:routines, no toca nada.
+  function migrateLegacyRoutinesIfNeeded() {
+    if (localStorage.getItem(ROUTINES_KEY) !== null) return;
+    const legacyDays = [
+      { key: 'espalda', name: 'Espalda y Bíceps' },
+      { key: 'piernas', name: 'Piernas' },
+      { key: 'pecho', name: 'Pecho, Hombro y Tríceps' },
+    ];
+    const routines = [];
+    legacyDays.forEach(d => {
+      let legacyExercises = [];
+      try { legacyExercises = JSON.parse(localStorage.getItem('bitacora:routine:' + d.key) || '[]'); } catch (e) {}
+      if (legacyExercises.length) {
+        routines.push({
+          id: genId(),
+          name: d.name,
+          restTimer: 90,
+          exercises: legacyExercises.map(ex => ({
+            id: genId(),
+            name: ex.name,
+            targetSets: (ex.sets && ex.sets.length) || 3,
+            restTimer: null,
+          })),
+        });
+      }
+    });
+    localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines));
+  }
+  migrateLegacyRoutinesIfNeeded();
+
+  function renderRoutinesList() {
+    const routines = loadRoutines();
+    const ul = document.getElementById('routines-list');
+    const empty = document.getElementById('routines-empty');
+    ul.innerHTML = '';
+    empty.style.display = routines.length ? 'none' : 'block';
+    routines.forEach(r => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <div class="routine-row" data-id="${r.id}">
+          <div>
+            <div class="routine-row-name">${r.name}</div>
+            <div class="routine-row-meta">${r.exercises.length} ejercicio${r.exercises.length === 1 ? '' : 's'} · descanso ${r.restTimer}s</div>
           </div>
-          <table class="sets-table">
-            <thead><tr><th>Serie</th><th>Peso</th><th>Reps</th><th></th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-          <div class="add-set-row">
-            <input type="number" step="0.5" min="0" placeholder="kg" class="set-weight" data-ex="${exIdx}">
-            <input type="number" step="1" min="0" placeholder="reps" class="set-reps" data-ex="${exIdx}">
-            <button class="add-set" data-ex="${exIdx}">+ Serie</button>
-          </div>
+          <span class="chevron">›</span>
         </div>`;
-    }).join('');
-
-    container.querySelectorAll('.del-exercise').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const current = loadRoutine(day);
-        current.splice(parseInt(btn.dataset.ex, 10), 1);
-        persistRoutine(day, current);
-        renderRoutine(day);
-      });
+      ul.appendChild(li);
     });
-    container.querySelectorAll('.del-set').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const current = loadRoutine(day);
-        current[parseInt(btn.dataset.ex, 10)].sets.splice(parseInt(btn.dataset.set, 10), 1);
-        persistRoutine(day, current);
-        renderRoutine(day);
-      });
+    ul.querySelectorAll('.routine-row').forEach(row => {
+      row.addEventListener('click', () => openRoutineDetail(row.dataset.id));
     });
-    container.querySelectorAll('.add-set').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const exIdx = parseInt(btn.dataset.ex, 10);
-        const weight = parseFloat(container.querySelector(`.set-weight[data-ex="${exIdx}"]`).value);
-        const reps = parseInt(container.querySelector(`.set-reps[data-ex="${exIdx}"]`).value, 10);
-        if (!weight || !reps) return;
-        const current = loadRoutine(day);
-        current[exIdx].sets.push({ weight, reps });
-        persistRoutine(day, current);
-        renderRoutine(day);
-        awardXp('strength', XP_SET_LOGGED);
-      });
-    });
+    refreshTrainingRoutineSelect();
   }
 
-  document.querySelectorAll('.day-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.day-tab').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderRoutine(btn.dataset.day);
-    });
-  });
-
-  document.getElementById('exercise-add').addEventListener('click', () => {
-    const input = document.getElementById('exercise-input');
+  document.getElementById('routine-add').addEventListener('click', () => {
+    const input = document.getElementById('routine-name-input');
     const name = input.value.trim();
     if (!name) return;
-    const current = loadRoutine(currentRoutineDay);
-    current.push({ name, sets: [] });
-    persistRoutine(currentRoutineDay, current);
-    renderRoutine(currentRoutineDay);
+    const routines = loadRoutines();
+    routines.push({ id: genId(), name, restTimer: 90, exercises: [] });
+    persistRoutines(routines);
+    renderRoutinesList();
     input.value = '';
   });
 
-  window.refreshRoutinePage = () => renderRoutine(currentRoutineDay);
-  renderRoutine('espalda');
+  function openRoutineDetail(id) {
+    currentRoutineId = id;
+    document.getElementById('routines-list-view').style.display = 'none';
+    document.getElementById('routine-detail-view').style.display = 'block';
+    renderRoutineDetail();
+  }
+
+  function closeRoutineDetail() {
+    currentRoutineId = null;
+    document.getElementById('routine-detail-view').style.display = 'none';
+    document.getElementById('routines-list-view').style.display = 'block';
+    renderRoutinesList();
+  }
+  document.getElementById('routine-back-btn').addEventListener('click', closeRoutineDetail);
+
+  function renderRoutineDetail() {
+    const r = findRoutine(currentRoutineId);
+    if (!r) { closeRoutineDetail(); return; }
+    document.getElementById('routine-detail-name').textContent = r.name;
+    document.getElementById('routine-rest-default').value = r.restTimer;
+
+    const list = document.getElementById('routine-exercise-list');
+    if (!r.exercises.length) {
+      list.innerHTML = `
+        <p class="empty-state">
+          <span class="icon">🗓️</span>
+          Todavía no agregaste ejercicios a esta rutina.
+        </p>`;
+      return;
+    }
+    list.innerHTML = r.exercises.map(ex => `
+      <div class="exercise-card">
+        <div class="exercise-head">
+          <h3>${ex.name}</h3>
+          <button class="del-exercise" data-id="${ex.id}" aria-label="Borrar ejercicio">✕</button>
+        </div>
+        <div class="exercise-config-row">
+          <label>Series objetivo
+            <input type="number" min="1" class="ex-target-sets" data-id="${ex.id}" value="${ex.targetSets}">
+          </label>
+          <label>Descanso propio (seg)
+            <input type="number" min="0" step="5" class="ex-rest" data-id="${ex.id}" placeholder="usa el de la rutina" value="${ex.restTimer === null || ex.restTimer === undefined ? '' : ex.restTimer}">
+          </label>
+        </div>
+      </div>`).join('');
+
+    list.querySelectorAll('.del-exercise').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const routine = findRoutine(currentRoutineId);
+        routine.exercises = routine.exercises.filter(ex => ex.id !== btn.dataset.id);
+        persistRoutines(loadRoutines().map(x => x.id === routine.id ? routine : x));
+        renderRoutineDetail();
+      });
+    });
+    list.querySelectorAll('.ex-target-sets').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const routine = findRoutine(currentRoutineId);
+        const ex = routine.exercises.find(e => e.id === inp.dataset.id);
+        ex.targetSets = Math.max(1, parseInt(inp.value, 10) || 1);
+        persistRoutines(loadRoutines().map(x => x.id === routine.id ? routine : x));
+      });
+    });
+    list.querySelectorAll('.ex-rest').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const routine = findRoutine(currentRoutineId);
+        const ex = routine.exercises.find(e => e.id === inp.dataset.id);
+        ex.restTimer = inp.value === '' ? null : Math.max(0, parseInt(inp.value, 10) || 0);
+        persistRoutines(loadRoutines().map(x => x.id === routine.id ? routine : x));
+      });
+    });
+  }
+
+  document.getElementById('routine-rest-save').addEventListener('click', () => {
+    const routine = findRoutine(currentRoutineId);
+    if (!routine) return;
+    routine.restTimer = Math.max(0, parseInt(document.getElementById('routine-rest-default').value, 10) || 0);
+    persistRoutines(loadRoutines().map(x => x.id === routine.id ? routine : x));
+    renderRoutineDetail();
+  });
+
+  document.getElementById('routine-exercise-add').addEventListener('click', () => {
+    const input = document.getElementById('routine-exercise-input');
+    const name = input.value.trim();
+    if (!name) return;
+    const routine = findRoutine(currentRoutineId);
+    routine.exercises.push({ id: genId(), name, targetSets: 3, restTimer: null });
+    persistRoutines(loadRoutines().map(x => x.id === routine.id ? routine : x));
+    renderRoutineDetail();
+    input.value = '';
+  });
+
+  document.getElementById('routine-delete-btn').addEventListener('click', () => {
+    persistRoutines(loadRoutines().filter(r => r.id !== currentRoutineId));
+    closeRoutineDetail();
+  });
+
+  window.refreshRoutinePage = () => {
+    if (currentRoutineId) renderRoutineDetail();
+    else renderRoutinesList();
+  };
+  renderRoutinesList();
 
   // --- Análisis de rutina (privado por cuenta, flujo manual aparte — no se repite seguido) ---
-  const ROUTINE_DAYS = [
-    { key: 'espalda', label: 'Espalda y Bíceps' },
-    { key: 'piernas', label: 'Piernas' },
-    { key: 'pecho', label: 'Pecho, Hombro y Tríceps' },
-  ];
-
   function buildRoutineExportText() {
-    const header = 'Quiero que analices si mi rutina de gimnasio es óptima: si el volumen y la selección de ejercicios tienen sentido para mi objetivo, si hay redundancias que podría sacar para entrenar menos tiempo sin perder resultado, y si falta algo importante. Dame un análisis breve y concreto (no me armes una rutina nueva entera, salvo que haga falta), en segunda persona, tono natural, sin bullets ni encabezados innecesarios. Acá está mi rutina actual:';
+    const header = 'Quiero que analices si mi rutina de gimnasio es óptima: si el volumen y la selección de ejercicios tienen sentido para mi objetivo, si hay redundancias que podría sacar para entrenar menos tiempo sin perder resultado, y si falta algo importante. Dame un análisis breve y concreto (no me armes una rutina nueva entera, salvo que haga falta), en segunda persona, tono natural, sin bullets ni encabezados innecesarios. Acá están mis rutinas actuales:';
     const lines = [];
     const profile = loadProfile();
     if (profile) lines.push(`Perfil: ${profile.weight} kg, ${profile.height} m, objetivo: "${profile.goal}"`);
     lines.push('');
-    ROUTINE_DAYS.forEach(d => {
-      const exercises = loadRoutine(d.key);
-      lines.push(`## ${d.label}`);
-      if (!exercises.length) {
-        lines.push('(sin ejercicios cargados)');
-      } else {
-        exercises.forEach(ex => {
-          const setsText = ex.sets.length ? ex.sets.map(s => `${s.weight}kg x${s.reps}`).join(', ') : '(sin series cargadas)';
-          lines.push(`- ${ex.name}: ${setsText}`);
-        });
-      }
-      lines.push('');
-    });
+    const routines = loadRoutines();
+    if (!routines.length) {
+      lines.push('(todavía no hay rutinas cargadas)');
+    } else {
+      routines.forEach(r => {
+        lines.push(`## ${r.name} (descanso ${r.restTimer}s)`);
+        if (!r.exercises.length) {
+          lines.push('(sin ejercicios cargados)');
+        } else {
+          r.exercises.forEach(ex => {
+            lines.push(`- ${ex.name}: ${ex.targetSets} series${ex.restTimer !== null && ex.restTimer !== undefined ? `, descanso ${ex.restTimer}s` : ''}`);
+          });
+        }
+        lines.push('');
+      });
+    }
     return [header, '', ...lines].join('\n');
   }
 
@@ -1193,6 +1366,233 @@
 
   window.refreshRoutineAnalysis = renderRoutineAnalysis;
   renderRoutineAnalysis();
+
+  // --- Entrenamiento: sesión en vivo + historial (privado por cuenta) ---
+  // El historial es la fuente de verdad de "qué levantaste la última vez" — no se
+  // duplica en ningún otro lado, se recalcula leyendo bitacora:workoutHistory.
+  const WORKOUT_HISTORY_KEY = 'bitacora:workoutHistory';
+  const ACTIVE_SESSION_KEY = 'bitacora:activeSession';
+
+  function loadWorkoutHistory() {
+    try { return JSON.parse(localStorage.getItem(WORKOUT_HISTORY_KEY) || '[]'); } catch (e) { return []; }
+  }
+  function persistWorkoutHistory(history) {
+    localStorage.setItem(WORKOUT_HISTORY_KEY, JSON.stringify(history));
+    if (window.BitacoraSync) window.BitacoraSync.pushWorkoutHistory(history);
+  }
+  function lastSessionFor(routineId) {
+    const history = loadWorkoutHistory();
+    for (let i = history.length - 1; i >= 0; i--) {
+      if (history[i].routineId === routineId) return history[i];
+    }
+    return null;
+  }
+  function findLastSetValue(lastSession, exerciseName, setIndex) {
+    if (!lastSession) return null;
+    const ex = lastSession.exercises.find(e => e.name === exerciseName);
+    const s = ex && ex.sets[setIndex];
+    if (!s || s.weight == null || s.reps == null) return null;
+    return s;
+  }
+
+  function loadActiveSession() {
+    try { return JSON.parse(localStorage.getItem(ACTIVE_SESSION_KEY) || 'null'); } catch (e) { return null; }
+  }
+  function saveActiveSession(session) { localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session)); }
+  function clearActiveSession() { localStorage.removeItem(ACTIVE_SESSION_KEY); }
+
+  function refreshTrainingRoutineSelect() {
+    const select = document.getElementById('training-routine-select');
+    const routines = loadRoutines();
+    select.innerHTML = routines.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+    document.getElementById('training-no-routines').style.display = routines.length ? 'none' : 'block';
+    select.style.display = routines.length ? 'block' : 'none';
+    document.getElementById('training-start-btn').disabled = !routines.length;
+  }
+
+  let stopwatchInterval = null;
+  function startStopwatch(startedAtISO) {
+    clearInterval(stopwatchInterval);
+    const tick = () => {
+      const totalSec = Math.max(0, Math.floor((Date.now() - new Date(startedAtISO).getTime()) / 1000));
+      const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+      const ss = String(totalSec % 60).padStart(2, '0');
+      document.getElementById('training-stopwatch').textContent = `${mm}:${ss}`;
+    };
+    tick();
+    stopwatchInterval = setInterval(tick, 1000);
+  }
+  function stopStopwatch() { clearInterval(stopwatchInterval); stopwatchInterval = null; }
+
+  let restInterval = null;
+  function startRest(seconds) {
+    clearRestTimer();
+    const endsAt = Date.now() + seconds * 1000;
+    document.getElementById('training-rest-banner').style.display = 'flex';
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+      document.getElementById('training-rest-text').textContent = `Descanso: ${remaining}s`;
+      if (remaining <= 0) {
+        clearRestTimer();
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+    };
+    tick();
+    restInterval = setInterval(tick, 250);
+  }
+  function clearRestTimer() {
+    if (restInterval) { clearInterval(restInterval); restInterval = null; }
+    document.getElementById('training-rest-banner').style.display = 'none';
+  }
+  document.getElementById('training-rest-cancel').addEventListener('click', clearRestTimer);
+
+  function renderTrainingActive() {
+    const session = loadActiveSession();
+    if (!session) return;
+    document.getElementById('training-routine-name').textContent = session.routineName;
+    const list = document.getElementById('training-exercise-list');
+    list.innerHTML = session.exercises.map((ex, exIdx) => {
+      const rows = ex.sets.map((s, i) => {
+        const last = findLastSetValue(session.lastSession, ex.name, i);
+        return `
+          <tr>
+            <td>${i + 1}</td>
+            <td><input type="number" step="0.5" class="session-weight" data-ex="${exIdx}" data-set="${i}" placeholder="${last ? last.weight : '-'}" value="${s.weight === null ? '' : s.weight}"></td>
+            <td><input type="number" step="1" class="session-reps" data-ex="${exIdx}" data-set="${i}" placeholder="${last ? last.reps : '-'}" value="${s.reps === null ? '' : s.reps}"></td>
+            <td><button class="del-session-set" data-ex="${exIdx}" data-set="${i}" aria-label="Borrar serie">✕</button></td>
+          </tr>`;
+      }).join('') || `<tr><td colspan="4" style="color:var(--muted); padding:4px 0;">Sin series todavía</td></tr>`;
+      return `
+        <div class="exercise-card">
+          <div class="exercise-head">
+            <h3>${ex.name}</h3>
+            <button class="rest-btn" data-ex="${exIdx}">Descanso</button>
+          </div>
+          <table class="sets-table">
+            <thead><tr><th>Serie</th><th>Peso</th><th>Reps</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <button class="btn-secondary add-session-set" data-ex="${exIdx}" style="margin-top:8px;">+ Serie</button>
+        </div>`;
+    }).join('');
+
+    list.querySelectorAll('.session-weight, .session-reps').forEach(inp => {
+      inp.addEventListener('change', () => {
+        const s = loadActiveSession();
+        if (!s) return;
+        const exIdx = parseInt(inp.dataset.ex, 10), setIdx = parseInt(inp.dataset.set, 10);
+        const field = inp.classList.contains('session-weight') ? 'weight' : 'reps';
+        s.exercises[exIdx].sets[setIdx][field] = inp.value === '' ? null : parseFloat(inp.value);
+        saveActiveSession(s);
+      });
+    });
+    list.querySelectorAll('.del-session-set').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = loadActiveSession();
+        const exIdx = parseInt(btn.dataset.ex, 10), setIdx = parseInt(btn.dataset.set, 10);
+        s.exercises[exIdx].sets.splice(setIdx, 1);
+        saveActiveSession(s);
+        renderTrainingActive();
+      });
+    });
+    list.querySelectorAll('.add-session-set').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const s = loadActiveSession();
+        const exIdx = parseInt(btn.dataset.ex, 10);
+        s.exercises[exIdx].sets.push({ weight: null, reps: null });
+        saveActiveSession(s);
+        renderTrainingActive();
+      });
+    });
+    list.querySelectorAll('.rest-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const exIdx = parseInt(btn.dataset.ex, 10);
+        const ex = session.exercises[exIdx];
+        const seconds = (ex.restTimer !== null && ex.restTimer !== undefined) ? ex.restTimer : session.restTimerDefault;
+        startRest(seconds);
+      });
+    });
+  }
+
+  function showTrainingActive() {
+    const session = loadActiveSession();
+    if (!session) return;
+    document.getElementById('training-setup-view').style.display = 'none';
+    document.getElementById('training-active-view').style.display = 'block';
+    startStopwatch(session.startedAt);
+    renderTrainingActive();
+  }
+
+  function showTrainingSetup() {
+    stopStopwatch();
+    clearRestTimer();
+    document.getElementById('training-active-view').style.display = 'none';
+    document.getElementById('training-setup-view').style.display = 'block';
+    refreshTrainingRoutineSelect();
+  }
+
+  document.getElementById('training-start-btn').addEventListener('click', () => {
+    const routineId = document.getElementById('training-routine-select').value;
+    const routine = findRoutine(routineId);
+    if (!routine) return;
+    const session = {
+      routineId: routine.id,
+      routineName: routine.name,
+      startedAt: new Date().toISOString(),
+      restTimerDefault: routine.restTimer,
+      lastSession: lastSessionFor(routineId),
+      exercises: routine.exercises.map(ex => ({
+        id: ex.id,
+        name: ex.name,
+        restTimer: ex.restTimer,
+        sets: Array.from({ length: ex.targetSets }, () => ({ weight: null, reps: null })),
+      })),
+    };
+    saveActiveSession(session);
+    showTrainingActive();
+  });
+
+  document.getElementById('training-finish-btn').addEventListener('click', () => {
+    const session = loadActiveSession();
+    if (!session) return;
+    let loggedSets = 0;
+    const historyExercises = session.exercises
+      .map(ex => {
+        const sets = ex.sets.filter(s => s.weight != null && s.reps != null);
+        loggedSets += sets.length;
+        return { name: ex.name, sets };
+      })
+      .filter(ex => ex.sets.length);
+
+    const durationSeconds = Math.max(0, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 1000));
+    const history = loadWorkoutHistory();
+    history.push({
+      id: genId(),
+      routineId: session.routineId,
+      routineName: session.routineName,
+      date: new Date().toISOString(),
+      durationSeconds,
+      exercises: historyExercises,
+    });
+    persistWorkoutHistory(history);
+
+    if (loggedSets > 0) awardXp('strength', loggedSets * XP_SET_LOGGED + XP_REFLECTION_BONUS);
+
+    clearActiveSession();
+    showTrainingSetup();
+  });
+
+  document.getElementById('training-cancel-btn').addEventListener('click', () => {
+    if (!confirm('¿Cancelar el entrenamiento? No se va a guardar nada de esta sesión.')) return;
+    clearActiveSession();
+    showTrainingSetup();
+  });
+
+  if (loadActiveSession()) {
+    showTrainingActive();
+  } else {
+    refreshTrainingRoutineSelect();
+  }
 
   // --- Perfil (privado por cuenta: peso, altura, objetivo) ---
   // Sin datos de ejemplo: si nadie cargó nada todavía, loadProfile() devuelve null y la UI

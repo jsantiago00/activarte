@@ -52,7 +52,8 @@ async function init() {
       if (user) {
         watchUserCollection('meals', 'bitacora:meals:', (data) => JSON.stringify(data.list || []), window.refreshComidasPage);
         watchUserCollection('feedback', 'bitacora:feedback:', (data) => data.text || '', window.refreshComidasPage);
-        watchUserCollection('routine', 'bitacora:routine:', (data) => JSON.stringify(data.exercises || []), window.refreshRoutinePage);
+        watchUserDoc('routines', 'data', 'bitacora:routines', (data) => JSON.stringify(data.list || []), window.refreshRoutinePage);
+        watchUserDoc('workoutHistory', 'data', 'bitacora:workoutHistory', (data) => JSON.stringify(data.list || []));
         watchUserDoc('profile', 'data', 'bitacora:profile', (data) => JSON.stringify(data || {}), window.refreshProfileUI);
         watchUserDoc('routineAnalysis', 'data', 'bitacora:routineAnalysis', (data) => JSON.stringify(data || {}), window.refreshRoutineAnalysis);
         watchUserDoc('rpg', 'stats', 'bitacora:rpg', (data) => JSON.stringify(data || {}), window.refreshHome);
@@ -142,13 +143,23 @@ async function pushFeedback(dateKey, text) {
   }
 }
 
-async function pushRoutine(day, exercises) {
+async function pushRoutines(routines) {
   if (!state.user) return;
   try {
-    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'routine', day);
-    await firestoreApi.setDoc(ref, { exercises, updatedAt: firestoreApi.serverTimestamp() });
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'routines', 'data');
+    await firestoreApi.setDoc(ref, { list: routines, updatedAt: firestoreApi.serverTimestamp() });
   } catch (err) {
-    console.warn('[sync] pushRoutine', err);
+    console.warn('[sync] pushRoutines', err);
+  }
+}
+
+async function pushWorkoutHistory(history) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'workoutHistory', 'data');
+    await firestoreApi.setDoc(ref, { list: history, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushWorkoutHistory', err);
   }
 }
 
@@ -274,7 +285,8 @@ window.BitacoraSync = {
   logOut,
   pushMeals,
   pushFeedback,
-  pushRoutine,
+  pushRoutines,
+  pushWorkoutHistory,
   pushProfile,
   pushRoutineAnalysis,
   pushRpgStats,

@@ -76,23 +76,21 @@ Te pego varias cosas para que respondas en un mismo mensaje, todas numeradas. Re
 
 ---
 
-## Formato 3: Análisis de rutina completa (botón "Exportar rutina")
+## Formato 3: Análisis de rutinas completas (botón "Exportar rutinas")
 
-Este se pide mucho menos seguido que los otros dos — solo cuando la persona cambió algo importante en su rutina y quiere saber si sigue siendo óptima.
+Este se pide mucho menos seguido que los otros dos — solo cuando la persona cambió algo importante en sus rutinas y quiere saber si siguen siendo óptimas. La persona puede tener cualquier cantidad de rutinas con el nombre que quiera (no son 3 días fijos) — cada una es una plantilla (ejercicios + series objetivo + descanso), no el peso/reps real de una sesión puntual, eso vive aparte en el historial de entrenamientos.
 
 ### Cómo identificarlo
 El texto que te pegan empieza así:
 
 ```
-Quiero que analices si mi rutina de gimnasio es óptima: si el volumen y la selección de ejercicios tienen sentido para mi objetivo, si hay redundancias que podría sacar para entrenar menos tiempo sin perder resultado, y si falta algo importante. Dame un análisis breve y concreto (no me armes una rutina nueva entera, salvo que haga falta), en segunda persona, tono natural, sin bullets ni encabezados innecesarios. Acá está mi rutina actual:
+Quiero que analices si mi rutina de gimnasio es óptima: si el volumen y la selección de ejercicios tienen sentido para mi objetivo, si hay redundancias que podría sacar para entrenar menos tiempo sin perder resultado, y si falta algo importante. Dame un análisis breve y concreto (no me armes una rutina nueva entera, salvo que haga falta), en segunda persona, tono natural, sin bullets ni encabezados innecesarios. Acá están mis rutinas actuales:
 
 Perfil: <peso> kg, <altura> m, objetivo: "<objetivo>"
 
-## Espalda y Bíceps
-- <ejercicio>: <peso>kg x<reps>, ...
-## Piernas
-- ...
-## Pecho, Hombro y Tríceps
+## <Nombre de rutina 1> (descanso <segundos>s)
+- <ejercicio>: <N> series
+## <Nombre de rutina 2> (descanso <segundos>s)
 - ...
 ```
 

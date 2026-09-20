@@ -6,8 +6,8 @@
 <title>ActivArte - Bitácora nutricional</title>
 
 <link rel="manifest" href="./manifest.json">
-<meta name="theme-color" content="#23283A">
-<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#0A0E17">
+<meta name="color-scheme" content="dark">
 
 <!-- iOS: agregar a pantalla de inicio -->
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,25 +23,29 @@
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --paper: #EDE8DE;
-    --paper-card: #F7F4EC;
-    --line: #D6CFBE;
-    --ink: #23283A;
-    --muted: #8A8577;
-    --food: #B5482E;
-    --food-soft: #E7D3C9;
-    --gym: #3F6B4F;
-    --gym-soft: #D6E0D3;
-    --summary: #2E5C8A;
-    --summary-soft: #D3DEE7;
+    --bg: #0A0E17;
+    --panel: #141A28;
+    --panel-alt: #1C2333;
+    --border: #2A3348;
+    --border-bright: #45526E;
+    --ink: #E9EDF6;
+    --muted: #8892A8;
+    --food: #FF6B4A;
+    --food-soft: rgba(255,107,74,.16);
+    --gym: #3DDC84;
+    --gym-soft: rgba(61,220,132,.16);
+    --summary: #4FC3F7;
+    --summary-soft: rgba(79,195,247,.16);
+    --gold: #F2C94C;
+    --on-accent: #0A0E17;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  html{ color-scheme: dark; }
   body{
-    background: var(--paper);
-    background-image:
-      linear-gradient(var(--line) 1px, transparent 1px);
-    background-size: 100% 28px;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 50% 0%, rgba(79,195,247,.08), transparent 55%);
+    background-attachment: fixed;
     color: var(--ink);
     font-family: 'IBM Plex Sans', sans-serif;
     min-height:100vh;
@@ -49,32 +53,21 @@
     justify-content:center;
     padding: 18px 12px 40px;
   }
+  ::placeholder{ color: var(--muted); opacity:1; }
   .notebook{
     width:100%;
     max-width:430px;
     position:relative;
   }
   .cover{
-    background: var(--ink);
-    color: var(--paper-card);
-    border-radius:14px 14px 0 0;
-    padding:22px 22px 26px 34px;
+    background: var(--panel);
+    color: var(--ink);
+    border-radius:12px 12px 0 0;
+    border:1px solid var(--border);
+    border-bottom:none;
+    padding:22px 22px 24px;
     position:relative;
     overflow:hidden;
-  }
-  .holes{
-    position:absolute;
-    left:10px; top:0; bottom:0;
-    width:14px;
-    display:flex;
-    flex-direction:column;
-    justify-content:space-evenly;
-    align-items:center;
-  }
-  .holes span{
-    width:9px;height:9px;border-radius:50%;
-    background: var(--paper);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,.4);
   }
   .cover h1{
     font-family:'Big Shoulders Display', sans-serif;
@@ -83,26 +76,28 @@
     letter-spacing:.5px;
     margin:0 0 2px;
     text-transform:uppercase;
+    text-shadow: 0 0 18px rgba(79,195,247,.35);
   }
   .cover .sub{
     font-family:'IBM Plex Mono', monospace;
     font-size:12.5px;
-    color: #C9C2B2;
+    color: var(--muted);
     margin:0;
   }
   .stats-row{
     display:flex;
     gap:10px;
     margin-top:16px;
+    flex-wrap:wrap;
   }
   .stat-chip{
     font-family:'IBM Plex Mono', monospace;
     font-size:11.5px;
-    background: rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.18);
+    background: var(--panel-alt);
+    border:1px solid var(--border-bright);
     border-radius:20px;
     padding:5px 11px;
-    color: var(--paper-card);
+    color: var(--ink);
   }
 
   .pages-wrap{
@@ -111,15 +106,14 @@
   }
   .page-area{
     flex:1;
-    background: var(--paper-card);
-    border-left:1px solid var(--line);
-    border-right:1px solid var(--line);
+    background: var(--panel);
+    border:1px solid var(--border);
+    border-top:none;
     min-height:480px;
-    padding:26px 20px 30px 34px;
+    padding:26px 20px 30px;
     position:relative;
-    border-radius:0;
+    border-radius:0 0 12px 12px;
   }
-  .page-area .holes{ }
   .tabs{
     display:flex;
     flex-direction:column;
@@ -129,31 +123,33 @@
   .tab{
     font-family:'Big Shoulders Display', sans-serif;
     font-weight:700;
-    font-size:14px;
+    font-size:13px;
     letter-spacing:1.5px;
     text-transform:uppercase;
     writing-mode: vertical-rl;
     text-orientation:mixed;
-    padding:14px 7px;
+    padding:14px 8px;
     border-radius:0 8px 8px 0;
     cursor:pointer;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-left:none;
+    background:var(--panel-alt);
+    color:var(--muted);
     transform: translateX(-6px);
-    transition: transform .15s ease;
+    transition: transform .15s ease, box-shadow .15s ease, color .15s ease;
     user-select:none;
   }
   @media (prefers-reduced-motion: reduce){
     .tab{ transition:none; }
   }
-  .tab[data-tab="comidas"]{ background:var(--food-soft); color:var(--food); }
-  .tab[data-tab="rutina"]{ background:var(--gym-soft); color:var(--gym); }
-  .tab[data-tab="resumen"]{ background:var(--summary-soft); color:var(--summary); }
-  .tab[data-tab="cuenta"]{ background:var(--paper-card); color:var(--ink); }
   .tab.active{
     transform: translateX(0px);
-    box-shadow: -3px 3px 8px rgba(0,0,0,.12);
+    background:var(--panel);
   }
+  .tab[data-tab="comidas"].active{ color:var(--food); border-color:var(--food); box-shadow:-3px 3px 16px -6px var(--food); }
+  .tab[data-tab="rutina"].active{ color:var(--gym); border-color:var(--gym); box-shadow:-3px 3px 16px -6px var(--gym); }
+  .tab[data-tab="resumen"].active{ color:var(--summary); border-color:var(--summary); box-shadow:-3px 3px 16px -6px var(--summary); }
+  .tab[data-tab="cuenta"].active{ color:var(--ink); border-color:var(--border-bright); }
 
   .page{ display:none; }
   .page.active{ display:block; }
@@ -164,6 +160,7 @@
     margin:0 0 4px;
     text-transform:uppercase;
     letter-spacing:.5px;
+    color: var(--ink);
   }
   .page .date-label{
     font-family:'IBM Plex Mono', monospace;
@@ -173,9 +170,9 @@
   }
 
   .card{
-    background:#fff;
-    border:1px solid var(--line);
-    border-radius:10px;
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    border-radius:8px;
     padding:14px 16px;
     margin-bottom:14px;
   }
@@ -184,6 +181,7 @@
     font-size:14.5px;
     font-weight:600;
     margin:0 0 8px;
+    color: var(--ink);
   }
 
   .profile-grid{
@@ -213,15 +211,17 @@
     flex:1;
     font-family:'IBM Plex Sans', sans-serif;
     font-size:14px;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:8px;
     padding:10px 12px;
     resize:none;
     min-height:44px;
+    background:var(--panel);
+    color:var(--ink);
   }
   .entry-form button{
     background:var(--food);
-    color:#fff;
+    color:var(--on-accent);
     border:none;
     border-radius:8px;
     padding:0 16px;
@@ -240,7 +240,7 @@
   .entry-list{ list-style:none; margin:0; padding:0; }
   .entry-list li{
     padding:10px 0;
-    border-bottom:1px dashed var(--line);
+    border-bottom:1px dashed var(--border);
     font-size:14px;
   }
   .entry-list li:last-child{ border-bottom:none; }
@@ -281,7 +281,7 @@
     font-size:12.5px;
     color:var(--muted);
     line-height:1.5;
-    border-left:3px solid var(--line);
+    border-left:3px solid var(--border);
     padding-left:10px;
   }
 
@@ -294,7 +294,7 @@
   .date-nav .date-label{ margin:0; flex:1; }
   .date-nav button{
     background:none;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:6px;
     color:var(--ink);
     font-family:'IBM Plex Mono', monospace;
@@ -306,8 +306,8 @@
   .date-nav button:disabled{ opacity:.35; cursor:default; }
 
   .exercise-card{
-    background:#fff;
-    border:1px solid var(--line);
+    background:var(--panel-alt);
+    border:1px solid var(--border);
     border-radius:10px;
     padding:12px 14px;
     margin-bottom:10px;
@@ -368,35 +368,26 @@
   }
   .feedback-btn{
     background:var(--summary);
-    color:#fff;
+    color:var(--on-accent);
   }
   .btn-secondary{
-    background:var(--paper-card);
+    background:var(--panel-alt);
     color:var(--ink);
-    border:1px solid var(--line);
+    border:1px solid var(--border-bright);
   }
   .feedback-btn:disabled, .btn-secondary:disabled{ opacity:.6; cursor:default; }
 
   .feedback-note{
-    background:#FFF7D6;
-    border:1px solid #E8DDA0;
-    border-radius:2px;
+    background:var(--panel-alt);
+    border:1px solid var(--border);
+    border-left:3px solid var(--gold);
+    border-radius:8px;
     padding:14px 16px;
     margin-top:12px;
     font-size:13.5px;
     line-height:1.55;
-    position:relative;
-    transform:rotate(-0.6deg);
-    box-shadow:0 2px 6px rgba(0,0,0,.08);
+    color: var(--ink);
     white-space:pre-wrap;
-  }
-  .feedback-note::before{
-    content:'';
-    position:absolute;
-    top:-9px; left:50%;
-    transform:translateX(-50%) rotate(-2deg);
-    width:46px;height:16px;
-    background:rgba(210,180,120,.55);
   }
 
   #export-fallback{ margin-top:10px; }
@@ -404,12 +395,12 @@
     width:100%;
     font-family:'IBM Plex Mono', monospace;
     font-size:12.5px;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:8px;
     padding:10px 12px;
     min-height:120px;
     resize:vertical;
-    background:#fff;
+    background:var(--panel);
     color:var(--ink);
   }
 
@@ -417,13 +408,13 @@
     width:100%;
     font-family:'IBM Plex Sans', sans-serif;
     font-size:14px;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:8px;
     padding:10px 12px;
     min-height:70px;
     resize:vertical;
     margin-bottom:10px;
-    background:#fff;
+    background:var(--panel);
     color:var(--ink);
   }
   .plain-textarea.mono{
@@ -436,11 +427,11 @@
     width:100%;
     font-family:'IBM Plex Sans', sans-serif;
     font-size:14px;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:8px;
     padding:9px 12px;
     margin-bottom:8px;
-    background:#fff;
+    background:var(--panel);
     color:var(--ink);
   }
   .auth-error{
@@ -456,7 +447,7 @@
 
   .info-badge{
     background:none;
-    border:1px solid var(--line);
+    border:1px solid var(--border-bright);
     border-radius:50%;
     width:18px;
     height:18px;
@@ -483,7 +474,7 @@
     font-size:12.5px;
     color:var(--muted);
     line-height:1.5;
-    border-left:3px solid var(--summary-soft);
+    border-left:3px solid var(--summary);
     padding-left:10px;
   }
   .meal-row .food-info.open{ display:block; }
@@ -492,10 +483,12 @@
     display:flex;
     justify-content:center;
     padding:18px 16px;
+    background-image: radial-gradient(circle at 50% 40%, var(--summary-soft), transparent 65%);
   }
   .char-card img{
     image-rendering:pixelated;
     image-rendering:crisp-edges;
+    filter: drop-shadow(0 0 14px rgba(79,195,247,.25));
   }
   .stat-row{ margin-bottom:14px; }
   .stat-row:last-child{ margin-bottom:0; }
@@ -506,20 +499,22 @@
     font-weight:600;
     font-size:13px;
     margin-bottom:6px;
+    color: var(--ink);
   }
   .xp-bar{
     height:10px;
-    background:var(--paper);
-    border:1px solid var(--line);
+    background:var(--bg);
+    border:1px solid var(--border);
     border-radius:6px;
     overflow:hidden;
   }
   .xp-fill{
     height:100%;
     background:var(--gym);
+    box-shadow: 0 0 8px var(--gym);
     transition:width .3s ease;
   }
-  .xp-fill.nut{ background:var(--food); }
+  .xp-fill.nut{ background:var(--food); box-shadow: 0 0 8px var(--food); }
 
   .mission-row{
     display:flex;
@@ -546,7 +541,7 @@
     justify-content:space-between;
     align-items:center;
     padding:12px 0;
-    border-bottom:1px dashed var(--line);
+    border-bottom:1px dashed var(--border);
     cursor:pointer;
   }
   .routine-row:last-child{ border-bottom:none; }
@@ -578,11 +573,11 @@
   .exercise-config-row input{
     font-family:'IBM Plex Mono', monospace;
     font-size:12.5px;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:6px;
     padding:5px 8px;
     width:100px;
-    background:#fff;
+    background:var(--panel);
     color:var(--ink);
   }
 
@@ -591,6 +586,7 @@
     font-size:32px;
     font-weight:600;
     color:var(--ink);
+    text-shadow: 0 0 18px var(--gym-soft);
   }
 
   .rest-banner{
@@ -617,15 +613,15 @@
     width:56px;
     font-family:'IBM Plex Mono', monospace;
     font-size:12.5px;
-    border:1px solid var(--line);
+    border:1px solid var(--border);
     border-radius:4px;
     padding:3px 5px;
-    background:#fff;
+    background:var(--panel);
     color:var(--ink);
   }
   .sets-table .rest-btn{
     background:none;
-    border:1px solid var(--line);
+    border:1px solid var(--border-bright);
     border-radius:6px;
     color:var(--gym);
     font-size:11px;
@@ -659,14 +655,15 @@
   }
   .fab-primary{
     background:var(--gym);
-    color:#fff;
+    color:var(--on-accent);
     padding:15px 22px;
     font-size:14.5px;
+    box-shadow:0 4px 20px -2px var(--gym);
   }
   .fab-secondary{
-    background:var(--paper-card);
+    background:var(--panel-alt);
     color:var(--ink);
-    border:1px solid var(--line);
+    border:1px solid var(--border-bright);
     padding:10px 16px;
     font-size:12.5px;
   }
@@ -677,7 +674,6 @@
 
 <div class="notebook">
   <div class="cover">
-    <div class="holes"><span></span><span></span><span></span><span></span></div>
     <h1>ActivArte</h1>
     <p class="sub" id="today-date">—</p>
     <div class="stats-row">
@@ -689,8 +685,6 @@
 
   <div class="pages-wrap">
     <div class="page-area">
-      <div class="holes"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-
       <!-- PÁGINA: COMIDAS -->
       <section class="page active" id="page-comidas">
         <h2>Comidas</h2>

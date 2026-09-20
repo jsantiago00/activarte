@@ -148,7 +148,6 @@
   }
   .tab[data-tab="comidas"]{ background:var(--food-soft); color:var(--food); }
   .tab[data-tab="rutina"]{ background:var(--gym-soft); color:var(--gym); }
-  .tab[data-tab="entrenar"]{ background:var(--gym); color:#fff; }
   .tab[data-tab="resumen"]{ background:var(--summary-soft); color:var(--summary); }
   .tab[data-tab="cuenta"]{ background:var(--paper-card); color:var(--ink); }
   .tab.active{
@@ -730,6 +729,10 @@
 
           <div class="card" style="margin-top:12px;">
             <h3 id="routine-detail-name">—</h3>
+            <button class="feedback-btn" id="routine-start-training-btn" style="width:100%; margin-top:4px;">▶ Comenzar entrenamiento</button>
+          </div>
+
+          <div class="card">
             <label class="note" style="display:block; margin-bottom:6px;">Descanso por defecto entre series (segundos)</label>
             <div style="display:flex; gap:8px;">
               <input class="auth-input" type="number" min="0" step="5" id="routine-rest-default" style="max-width:120px; margin-bottom:0;">
@@ -746,22 +749,8 @@
 
           <button class="btn-secondary" id="routine-delete-btn" style="margin-top:14px; color:var(--food); border-color:var(--food);">Eliminar esta rutina</button>
         </div>
-      </section>
 
-      <!-- PÁGINA: ENTRENAMIENTO -->
-      <section class="page" id="page-entrenar">
-        <h2>Entrenar</h2>
-
-        <div id="training-setup-view">
-          <p class="date-label">Elegí una rutina para empezar</p>
-          <select class="auth-input" id="training-routine-select"></select>
-          <button class="feedback-btn" id="training-start-btn">Comenzar entrenamiento</button>
-          <p class="empty-state" id="training-no-routines" style="display:none;">
-            <span class="icon">🏋️</span>
-            Todavía no tenés rutinas creadas. Armá una en la pestaña Rutina primero.
-          </p>
-        </div>
-
+        <!-- Vista: sesión de entrenamiento en vivo -->
         <div id="training-active-view" style="display:none;">
           <div class="card" style="text-align:center;">
             <p class="date-label" style="margin:0 0 4px;" id="training-routine-name">—</p>
@@ -870,7 +859,6 @@
     <div class="tabs">
       <div class="tab active" data-tab="comidas">Comidas</div>
       <div class="tab" data-tab="rutina">Rutina</div>
-      <div class="tab" data-tab="entrenar">Entrenar</div>
       <div class="tab" data-tab="resumen">Personaje</div>
       <div class="tab" data-tab="cuenta">Cuenta</div>
     </div>
@@ -1155,7 +1143,6 @@
     ul.querySelectorAll('.routine-row').forEach(row => {
       row.addEventListener('click', () => openRoutineDetail(row.dataset.id));
     });
-    refreshTrainingRoutineSelect();
   }
 
   document.getElementById('routine-add').addEventListener('click', () => {
@@ -1189,6 +1176,7 @@
     if (!r) { closeRoutineDetail(); return; }
     document.getElementById('routine-detail-name').textContent = r.name;
     document.getElementById('routine-rest-default').value = r.restTimer;
+    document.getElementById('routine-start-training-btn').disabled = !r.exercises.length;
 
     const list = document.getElementById('routine-exercise-list');
     if (!r.exercises.length) {
@@ -1401,15 +1389,6 @@
   function saveActiveSession(session) { localStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session)); }
   function clearActiveSession() { localStorage.removeItem(ACTIVE_SESSION_KEY); }
 
-  function refreshTrainingRoutineSelect() {
-    const select = document.getElementById('training-routine-select');
-    const routines = loadRoutines();
-    select.innerHTML = routines.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-    document.getElementById('training-no-routines').style.display = routines.length ? 'none' : 'block';
-    select.style.display = routines.length ? 'block' : 'none';
-    document.getElementById('training-start-btn').disabled = !routines.length;
-  }
-
   let stopwatchInterval = null;
   function startStopwatch(startedAtISO) {
     clearInterval(stopwatchInterval);
@@ -1514,33 +1493,34 @@
     });
   }
 
+  // La sesión en vivo vive dentro de la pestaña Rutina, como una tercera vista además de
+  // la lista y el detalle — se arranca con el botón que está en el detalle de la rutina.
   function showTrainingActive() {
     const session = loadActiveSession();
     if (!session) return;
-    document.getElementById('training-setup-view').style.display = 'none';
+    document.getElementById('routines-list-view').style.display = 'none';
+    document.getElementById('routine-detail-view').style.display = 'none';
     document.getElementById('training-active-view').style.display = 'block';
     startStopwatch(session.startedAt);
     renderTrainingActive();
   }
 
-  function showTrainingSetup() {
+  function endTrainingView() {
     stopStopwatch();
     clearRestTimer();
     document.getElementById('training-active-view').style.display = 'none';
-    document.getElementById('training-setup-view').style.display = 'block';
-    refreshTrainingRoutineSelect();
+    closeRoutineDetail();
   }
 
-  document.getElementById('training-start-btn').addEventListener('click', () => {
-    const routineId = document.getElementById('training-routine-select').value;
-    const routine = findRoutine(routineId);
-    if (!routine) return;
+  document.getElementById('routine-start-training-btn').addEventListener('click', () => {
+    const routine = findRoutine(currentRoutineId);
+    if (!routine || !routine.exercises.length) return;
     const session = {
       routineId: routine.id,
       routineName: routine.name,
       startedAt: new Date().toISOString(),
       restTimerDefault: routine.restTimer,
-      lastSession: lastSessionFor(routineId),
+      lastSession: lastSessionFor(routine.id),
       exercises: routine.exercises.map(ex => ({
         id: ex.id,
         name: ex.name,
@@ -1579,19 +1559,17 @@
     if (loggedSets > 0) awardXp('strength', loggedSets * XP_SET_LOGGED + XP_REFLECTION_BONUS);
 
     clearActiveSession();
-    showTrainingSetup();
+    endTrainingView();
   });
 
   document.getElementById('training-cancel-btn').addEventListener('click', () => {
     if (!confirm('¿Cancelar el entrenamiento? No se va a guardar nada de esta sesión.')) return;
     clearActiveSession();
-    showTrainingSetup();
+    endTrainingView();
   });
 
   if (loadActiveSession()) {
     showTrainingActive();
-  } else {
-    refreshTrainingRoutineSelect();
   }
 
   // --- Perfil (privado por cuenta: peso, altura, objetivo) ---

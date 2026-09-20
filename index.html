@@ -632,6 +632,45 @@
     padding:3px 7px;
     cursor:pointer;
   }
+
+  #routine-view-mode{ padding-bottom:96px; }
+  .fab-group{
+    position:fixed;
+    right:20px;
+    bottom:24px;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:12px;
+    z-index:20;
+  }
+  .fab{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    border:none;
+    border-radius:999px;
+    cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    box-shadow:0 4px 14px rgba(0,0,0,.22);
+    margin:0;
+  }
+  .fab-primary{
+    background:var(--gym);
+    color:#fff;
+    padding:15px 22px;
+    font-size:14.5px;
+  }
+  .fab-secondary{
+    background:var(--paper-card);
+    color:var(--ink);
+    border:1px solid var(--line);
+    padding:10px 16px;
+    font-size:12.5px;
+  }
+  .fab:disabled{ opacity:.5; cursor:default; }
 </style>
 </head>
 <body>
@@ -731,11 +770,14 @@
           <div class="card" style="margin-top:12px;">
             <h3 id="routine-view-name">—</h3>
             <p class="note" id="routine-view-meta">—</p>
-            <button class="feedback-btn" id="routine-start-training-btn" style="width:100%; margin-top:8px;">▶ Comenzar entrenamiento</button>
-            <button class="btn-secondary" id="routine-edit-btn" style="width:100%; margin-top:8px;">✎ Editar rutina</button>
           </div>
 
           <div id="routine-view-exercise-list"></div>
+
+          <div class="fab-group">
+            <button class="fab fab-secondary" id="routine-edit-btn">✎ Editar</button>
+            <button class="fab fab-primary" id="routine-start-training-btn">▶ Comenzar</button>
+          </div>
         </div>
 
         <!-- Vista: editar rutina -->

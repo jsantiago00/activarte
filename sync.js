@@ -55,6 +55,8 @@ async function init() {
         watchUserCollection('routine', 'bitacora:routine:', (data) => JSON.stringify(data.exercises || []), window.refreshRoutinePage);
         watchUserDoc('profile', 'data', 'bitacora:profile', (data) => JSON.stringify(data || {}), window.refreshProfileUI);
         watchUserDoc('routineAnalysis', 'data', 'bitacora:routineAnalysis', (data) => JSON.stringify(data || {}), window.refreshRoutineAnalysis);
+        watchUserDoc('rpg', 'stats', 'bitacora:rpg', (data) => JSON.stringify(data || {}), window.refreshHome);
+        watchUserDoc('rpg', 'missions', 'bitacora:missions', (data) => JSON.stringify(data || {}), window.refreshHome);
       }
       state.authListeners.forEach((cb) => cb(user));
     });
@@ -170,6 +172,26 @@ async function pushRoutineAnalysis(analysis) {
   }
 }
 
+async function pushRpgStats(stats) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'rpg', 'stats');
+    await firestoreApi.setDoc(ref, { ...stats, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushRpgStats', err);
+  }
+}
+
+async function pushMissions(missions) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'rpg', 'missions');
+    await firestoreApi.setDoc(ref, { ...missions, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushMissions', err);
+  }
+}
+
 // --- Base de alimentos compartida (foodKnowledge) + cola de pendientes ---
 
 async function lookupFoodKnowledge(slug) {
@@ -255,6 +277,8 @@ window.BitacoraSync = {
   pushRoutine,
   pushProfile,
   pushRoutineAnalysis,
+  pushRpgStats,
+  pushMissions,
   lookupFoodKnowledge,
   saveFoodKnowledge,
   queueFoodQuery,

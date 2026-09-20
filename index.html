@@ -539,6 +539,59 @@
     padding-left:10px;
   }
   .meal-row .food-info.open{ display:block; }
+
+  .char-card{
+    display:flex;
+    justify-content:center;
+    padding:18px 16px;
+  }
+  .char-card img{
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+  }
+  .stat-row{ margin-bottom:14px; }
+  .stat-row:last-child{ margin-bottom:0; }
+  .stat-label{
+    display:flex;
+    justify-content:space-between;
+    font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600;
+    font-size:13px;
+    margin-bottom:6px;
+  }
+  .xp-bar{
+    height:10px;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .xp-fill{
+    height:100%;
+    background:var(--gym);
+    transition:width .3s ease;
+  }
+  .xp-fill.nut{ background:var(--food); }
+
+  .mission-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    font-size:14px;
+    line-height:1.4;
+    cursor:pointer;
+  }
+  .mission-row input{
+    width:18px;
+    height:18px;
+    flex-shrink:0;
+    margin-top:1px;
+    accent-color: var(--gym);
+  }
+  .mission-row.done span{
+    text-decoration:line-through;
+    color:var(--muted);
+  }
 </style>
 </head>
 <body>
@@ -640,8 +693,31 @@
 
       <!-- PÁGINA: RESUMEN -->
       <section class="page" id="page-resumen">
-        <h2>Resumen</h2>
-        <p class="date-label">Tu perfil</p>
+        <h2>Personaje</h2>
+        <p class="date-label">Nivel <span id="char-level">1</span> — <span id="char-title">Novato</span></p>
+
+        <div class="card char-card">
+          <img id="char-sprite" src="sprites/tier0-novato.png" alt="Tu personaje" width="120" height="150">
+        </div>
+
+        <div class="card">
+          <div class="stat-row">
+            <div class="stat-label"><span>Fuerza</span><span>Nv. <span id="str-level">1</span></span></div>
+            <div class="xp-bar"><div class="xp-fill" id="str-fill" style="width:0%;"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-label"><span>Nutrición</span><span>Nv. <span id="nut-level">1</span></span></div>
+            <div class="xp-bar"><div class="xp-fill nut" id="nut-fill" style="width:0%;"></div></div>
+          </div>
+        </div>
+
+        <div class="card" id="mission-card" style="display:none;">
+          <h3>Misión de hoy</h3>
+          <label class="mission-row" id="mission-row-label">
+            <input type="checkbox" id="mission-checkbox">
+            <span id="mission-text"></span>
+          </label>
+        </div>
 
         <div class="card">
           <div class="profile-grid">
@@ -659,11 +735,6 @@
           <input class="auth-input" type="text" id="profile-goal" placeholder="Objetivo (ej: Mantener hábitos)">
           <button class="feedback-btn" id="profile-save">Guardar perfil</button>
         </div>
-
-        <p class="empty-state">
-          <span class="icon">📊</span>
-          Cuando tengamos comidas y rutina cargándose, esta página va a mostrar el panorama completo de la semana.
-        </p>
       </section>
 
       <!-- PÁGINA: CUENTA -->
@@ -708,7 +779,7 @@
     <div class="tabs">
       <div class="tab active" data-tab="comidas">Comidas</div>
       <div class="tab" data-tab="rutina">Rutina</div>
-      <div class="tab" data-tab="resumen">Resumen</div>
+      <div class="tab" data-tab="resumen">Personaje</div>
       <div class="tab" data-tab="cuenta">Cuenta</div>
     </div>
   </div>
@@ -910,6 +981,7 @@
     persistMeals(list);
     renderMeals(list);
     input.value = '';
+    awardXp('nutrition', XP_MEAL_LOGGED);
     handleFoodKnowledge(text);
     syncPendingDayState(selectedDate);
   });
@@ -996,6 +1068,7 @@
         current[exIdx].sets.push({ weight, reps });
         persistRoutine(day, current);
         renderRoutine(day);
+        awardXp('strength', XP_SET_LOGGED);
       });
     });
   }
@@ -1113,6 +1186,7 @@
     const text = input.value.trim();
     if (!text) return;
     persistRoutineAnalysis({ text, savedAt: new Date().toISOString() });
+    awardXp('strength', XP_REFLECTION_BONUS);
     input.value = '';
     renderRoutineAnalysis();
   });
@@ -1176,6 +1250,114 @@
   window.refreshProfileUI = renderProfileUI;
   renderProfileUI();
 
+  // --- RPG: stats, niveles, personaje y misión diaria (privado por cuenta) ---
+  const RPG_KEY = 'bitacora:rpg';
+  const XP_PER_LEVEL = 100;
+  const XP_MEAL_LOGGED = 5;
+  const XP_KNOWN_FOOD_BONUS = 5;
+  const XP_SET_LOGGED = 5;
+  const XP_MISSION_DONE = 20;
+  const XP_REFLECTION_BONUS = 15;
+
+  function loadRpg() {
+    try {
+      const raw = localStorage.getItem(RPG_KEY);
+      if (raw) return { strengthXp: 0, nutritionXp: 0, ...JSON.parse(raw) };
+    } catch (e) {}
+    return { strengthXp: 0, nutritionXp: 0 };
+  }
+
+  function persistRpg(rpg) {
+    localStorage.setItem(RPG_KEY, JSON.stringify(rpg));
+    if (window.BitacoraSync) window.BitacoraSync.pushRpgStats(rpg);
+    renderHome();
+  }
+
+  function awardXp(stat, amount) {
+    const rpg = loadRpg();
+    const field = stat === 'strength' ? 'strengthXp' : 'nutritionXp';
+    rpg[field] = (rpg[field] || 0) + amount;
+    persistRpg(rpg);
+  }
+
+  function levelFromXp(xp) { return Math.floor(xp / XP_PER_LEVEL) + 1; }
+
+  function avatarTier(avgLevel) {
+    if (avgLevel >= 6) return { key: 'tier2-heroe', title: 'Héroe ActivArte' };
+    if (avgLevel >= 3) return { key: 'tier1-en-marcha', title: 'En marcha' };
+    return { key: 'tier0-novato', title: 'Novato' };
+  }
+
+  const MISSIONS_KEY = 'bitacora:missions';
+  function loadMissions() {
+    try { return JSON.parse(localStorage.getItem(MISSIONS_KEY) || '{}'); } catch (e) { return {}; }
+  }
+  function persistMissions(missions) {
+    localStorage.setItem(MISSIONS_KEY, JSON.stringify(missions));
+    if (window.BitacoraSync) window.BitacoraSync.pushMissions(missions);
+    renderHome();
+  }
+  function addMissionFor(dateObj, text) {
+    const missions = loadMissions();
+    missions[dateKey(dateObj)] = { text, done: false };
+    persistMissions(missions);
+  }
+  function nextCalendarDay(dateObj) {
+    const d = new Date(dateObj);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  // Busca una línea "MISIÓN: ..." dentro de un feedback de día y la separa del resto
+  // del texto (así el post-it no la repite y queda como misión aparte del día siguiente).
+  function extractMissionLine(text) {
+    const m = text.match(/MISI[ÓO]N:\s*(.+)$/im);
+    if (!m) return { mission: null, cleaned: text };
+    const before = text.slice(0, m.index).trim();
+    const after = text.slice(m.index + m[0].length).trim();
+    const cleaned = [before, after].filter(Boolean).join(' ').trim();
+    return { mission: m[1].trim(), cleaned: cleaned || text };
+  }
+
+  function renderHome() {
+    const rpg = loadRpg();
+    const strLevel = levelFromXp(rpg.strengthXp);
+    const nutLevel = levelFromXp(rpg.nutritionXp);
+    const tier = avatarTier((strLevel + nutLevel) / 2);
+
+    document.getElementById('char-level').textContent = Math.floor((strLevel + nutLevel) / 2);
+    document.getElementById('char-title').textContent = tier.title;
+    document.getElementById('char-sprite').src = `sprites/${tier.key}.png`;
+    document.getElementById('str-level').textContent = strLevel;
+    document.getElementById('nut-level').textContent = nutLevel;
+    document.getElementById('str-fill').style.width = (rpg.strengthXp % XP_PER_LEVEL) + '%';
+    document.getElementById('nut-fill').style.width = (rpg.nutritionXp % XP_PER_LEVEL) + '%';
+
+    const missions = loadMissions();
+    const todayMission = missions[dateKey(today)];
+    const card = document.getElementById('mission-card');
+    if (todayMission) {
+      card.style.display = 'block';
+      document.getElementById('mission-text').textContent = todayMission.text;
+      document.getElementById('mission-checkbox').checked = todayMission.done;
+      document.getElementById('mission-row-label').classList.toggle('done', todayMission.done);
+    } else {
+      card.style.display = 'none';
+    }
+  }
+
+  document.getElementById('mission-checkbox').addEventListener('change', (e) => {
+    const missions = loadMissions();
+    const key = dateKey(today);
+    if (!missions[key]) return;
+    const wasDone = missions[key].done;
+    missions[key].done = e.target.checked;
+    persistMissions(missions);
+    if (e.target.checked && !wasDone) awardXp('nutrition', XP_MISSION_DONE);
+  });
+
+  window.refreshHome = renderHome;
+  renderHome();
+
   // --- Exportar día (texto plano al portapapeles) ---
   function buildExportText(date, meals) {
     const label = date.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -1220,10 +1402,13 @@
   // --- Importar feedback (pegado manual) ---
   document.getElementById('feedback-save').addEventListener('click', () => {
     const input = document.getElementById('feedback-input');
-    const text = input.value.trim();
-    if (!text) return;
-    saveFeedback(selectedDate, text);
-    if (window.BitacoraSync) window.BitacoraSync.pushFeedback(dateKey(selectedDate), text);
+    const raw = input.value.trim();
+    if (!raw) return;
+    const { mission, cleaned } = extractMissionLine(raw);
+    saveFeedback(selectedDate, cleaned);
+    if (window.BitacoraSync) window.BitacoraSync.pushFeedback(dateKey(selectedDate), cleaned);
+    if (mission) addMissionFor(nextCalendarDay(selectedDate), mission);
+    awardXp('nutrition', XP_REFLECTION_BONUS);
     input.value = '';
     renderFeedbackNote();
     syncPendingDayState(selectedDate);
@@ -1283,11 +1468,15 @@
 
   async function handleFoodKnowledge(text) {
     const slug = slugifyFood(text);
-    if (localStorage.getItem('bitacora:foodinfo:' + slug)) return;
+    if (localStorage.getItem('bitacora:foodinfo:' + slug)) {
+      awardXp('nutrition', XP_KNOWN_FOOD_BONUS);
+      return;
+    }
     if (window.BitacoraSync) {
       const info = await window.BitacoraSync.lookupFoodKnowledge(slug);
       if (info) {
         renderMeals(loadMeals(selectedDate));
+        awardXp('nutrition', XP_KNOWN_FOOD_BONUS);
         return;
       }
     }
@@ -1327,7 +1516,7 @@
     const dateObj = parseDateKey(item.ref);
     const label = dateObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
     const meals = loadMeals(dateObj).map(m => `${m.time} — ${m.text}`).join(' / ');
-    return `[DÍA] Feedback para ${label}. Comidas: ${meals}. Pedido: 3-4 oraciones sobre equilibrio del día (proteína, variedad, verduras/frutas, hidratación si se infiere) + una sugerencia concreta para el día siguiente. Segunda persona, tono natural, sin bullets ni encabezados, sin diagnósticos médicos.`;
+    return `[DÍA] Feedback para ${label}. Comidas: ${meals}. Pedido: 3-4 oraciones sobre equilibrio del día (proteína, variedad, verduras/frutas, hidratación si se infiere) + una sugerencia concreta para el día siguiente, y terminá la misma línea con "MISIÓN: <algo simple y concreto para hacer mañana>". Segunda persona, tono natural, sin bullets ni encabezados, sin diagnósticos médicos.`;
   }
 
   function buildPendingPrompt(items) {
@@ -1402,8 +1591,11 @@
         }
       } else {
         const dateObj = parseDateKey(item.ref);
-        saveFeedback(dateObj, answer);
-        if (window.BitacoraSync) window.BitacoraSync.pushFeedback(item.ref, answer);
+        const { mission, cleaned } = extractMissionLine(answer);
+        saveFeedback(dateObj, cleaned);
+        if (window.BitacoraSync) window.BitacoraSync.pushFeedback(item.ref, cleaned);
+        if (mission) addMissionFor(nextCalendarDay(dateObj), mission);
+        awardXp('nutrition', XP_REFLECTION_BONUS);
       }
     }
 

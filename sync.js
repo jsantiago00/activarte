@@ -55,6 +55,7 @@ async function init() {
         watchUserDoc('routines', 'data', 'bitacora:routines', (data) => JSON.stringify(data.list || []), window.refreshRoutinePage);
         watchUserDoc('workoutHistory', 'data', 'bitacora:workoutHistory', (data) => JSON.stringify(data.list || []));
         watchUserDoc('profile', 'data', 'bitacora:profile', (data) => JSON.stringify(data || {}), window.refreshProfileUI);
+        watchUserDoc('profile', 'appearance', 'bitacora:appearance', (data) => JSON.stringify(data || {}), window.refreshHome);
         watchUserDoc('routineAnalysis', 'data', 'bitacora:routineAnalysis', (data) => JSON.stringify(data || {}), window.refreshRoutineAnalysis);
         watchUserDoc('rpg', 'stats', 'bitacora:rpg', (data) => JSON.stringify(data || {}), window.refreshHome);
         watchUserDoc('rpg', 'missions', 'bitacora:missions', (data) => JSON.stringify(data || {}), window.refreshHome);
@@ -174,6 +175,7 @@ async function reconcileOnLogin() {
     reconcileDocIfEmpty('routines', 'data', 'bitacora:routines', (list) => ({ list, updatedAt: ts() })),
     reconcileDocIfEmpty('workoutHistory', 'data', 'bitacora:workoutHistory', (list) => ({ list, updatedAt: ts() })),
     reconcileDocIfEmpty('profile', 'data', 'bitacora:profile', (obj) => ({ ...obj, updatedAt: ts() })),
+    reconcileDocIfEmpty('profile', 'appearance', 'bitacora:appearance', (obj) => ({ ...obj, updatedAt: ts() })),
     reconcileDocIfEmpty('routineAnalysis', 'data', 'bitacora:routineAnalysis', (obj) => ({ ...obj, updatedAt: ts() })),
     reconcileDocIfEmpty('rpg', 'stats', 'bitacora:rpg', (obj) => ({ ...obj, updatedAt: ts() })),
     reconcileDocIfEmpty('rpg', 'missions', 'bitacora:missions', (obj) => ({ ...obj, updatedAt: ts() })),
@@ -230,6 +232,16 @@ async function pushProfile(profile) {
     await firestoreApi.setDoc(ref, { ...profile, updatedAt: firestoreApi.serverTimestamp() });
   } catch (err) {
     console.warn('[sync] pushProfile', err);
+  }
+}
+
+async function pushAppearance(appearance) {
+  if (!state.user) return;
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, 'profile', 'appearance');
+    await firestoreApi.setDoc(ref, { ...appearance, updatedAt: firestoreApi.serverTimestamp() });
+  } catch (err) {
+    console.warn('[sync] pushAppearance', err);
   }
 }
 
@@ -358,6 +370,7 @@ window.BitacoraSync = {
   pushRoutines,
   pushWorkoutHistory,
   pushProfile,
+  pushAppearance,
   pushRoutineAnalysis,
   pushRpgStats,
   pushMissions,

@@ -3,7 +3,7 @@
 // NO pasan por acá: no están en la lista de hosts permitidos más abajo, así que el navegador los maneja
 // directamente. Eso es intencional — son API calls en vivo, no assets estáticos, y Firestore ya maneja
 // su propio cache offline (persistentLocalCache) del lado del cliente.
-const CACHE_VERSION = 'v16';
+const CACHE_VERSION = 'v17';
 const CACHE_NAME = `bitacora-cache-${CACHE_VERSION}`;
 
 const APP_SHELL = [
@@ -17,9 +17,6 @@ const APP_SHELL = [
   './icons/icon-maskable-192.png',
   './icons/icon-maskable-512.png',
   './icons/apple-touch-icon.png',
-  './sprites/tier0-novato.png',
-  './sprites/tier1-en-marcha.png',
-  './sprites/tier2-heroe.png',
   'https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap',
 ];
 

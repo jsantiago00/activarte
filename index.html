@@ -499,12 +499,23 @@
   @media (prefers-reduced-motion: reduce){
     .char-portrait{ animation:none; }
   }
-  .char-portrait img{
+  .char-portrait svg{
     image-rendering:pixelated;
     image-rendering:crisp-edges;
+    shape-rendering:crispEdges;
     display:block;
     width:96px;
     height:120px;
+    animation: char-idle 2.6s ease-in-out infinite;
+    transform-origin: 50% 100%;
+  }
+  @keyframes char-idle{
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    25% { transform: translateY(-2px) rotate(-1deg); }
+    75% { transform: translateY(-2px) rotate(1deg); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .char-portrait svg{ animation:none; }
   }
   .char-level-badge{
     position:absolute;
@@ -653,6 +664,40 @@
     font-size:9.5px;
     color:var(--muted);
     line-height:1.2;
+  }
+
+  .option-row{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .option-btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:12px;
+    font-weight:600;
+    padding:7px 12px;
+    border-radius:20px;
+    border:1px solid var(--border-bright);
+    background:var(--panel);
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .option-btn.active{
+    background:var(--summary-soft);
+    border-color:var(--summary);
+    color:var(--summary);
+  }
+  .swatch{
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    border:2px solid var(--border-bright);
+    cursor:pointer;
+    padding:0;
+  }
+  .swatch.active{
+    border-color:var(--ink);
+    box-shadow:0 0 0 2px var(--panel), 0 0 0 4px currentColor;
   }
 
   .routine-row{
@@ -944,7 +989,7 @@
 
         <div class="card char-panel">
           <div class="char-portrait">
-            <img id="char-sprite" src="sprites/tier0-novato.png" alt="Tu personaje" width="120" height="150">
+            <div id="char-sprite" role="img" aria-label="Tu personaje"></div>
             <span class="char-level-badge" id="char-level-badge">1</span>
           </div>
           <div class="char-stats">
@@ -957,6 +1002,14 @@
               <div class="xp-bar"><div class="xp-fill nut" id="nut-fill" style="width:0%;"></div></div>
             </div>
           </div>
+        </div>
+
+        <div class="card">
+          <h3>Personalizar</h3>
+          <p class="note" style="margin-bottom:8px;">Corte de pelo</p>
+          <div class="option-row" id="hairstyle-options"></div>
+          <p class="note" style="margin:12px 0 8px;">Color de pelo</p>
+          <div class="option-row" id="haircolor-options"></div>
         </div>
 
         <div class="quest-card" id="mission-card" style="display:none;">
@@ -1926,6 +1979,137 @@
     return { key: 'tier0-novato', title: 'Novato' };
   }
 
+  // --- Personaje armado en vivo con SVG: pelo (corte + color) personalizable, ropa por
+  // nivel. Reemplaza los 3 PNG fijos por una grilla de píxeles renderizada por JS, así se
+  // puede recolorear/cambiar de corte sin regenerar ninguna imagen.
+  const CHAR_COLS = 16, CHAR_ROWS = 20, CHAR_SCALE = 12;
+  function charFill(ch) { return new Array(CHAR_COLS).fill(ch); }
+  function charBand(fromIdx, toIdx, ch, base) {
+    const r = base.slice();
+    for (let i = fromIdx; i <= toIdx; i++) r[i] = ch;
+    return r;
+  }
+  function charSet(idx, ch, base) {
+    const r = base.slice();
+    r[idx] = ch;
+    return r;
+  }
+
+  const CHAR_EMPTY = charFill('.');
+  const CHAR_FACE = charBand(5, 10, 's', charBand(4, 4, 'h', charBand(11, 11, 'h', CHAR_EMPTY)));
+  const CHAR_EYES = charSet(6, 'k', charSet(9, 'k', CHAR_FACE));
+  const CHAR_CHIN = charBand(6, 8, 's', charBand(5, 5, 'h', charBand(9, 9, 'h', CHAR_EMPTY)));
+  const CHAR_NECK = charBand(6, 6, 's', charBand(7, 8, 'x', CHAR_EMPTY));
+  const CHAR_SHIRT_TOP = charBand(5, 10, 'o', CHAR_EMPTY);
+  const CHAR_SHIRT_WIDE = charBand(4, 11, 'o', CHAR_EMPTY);
+  const CHAR_ARMS = charSet(0, 's', charSet(15, 's', charBand(4, 11, 'o', CHAR_EMPTY)));
+  const CHAR_ARMS_SHADE = charSet(0, 's', charSet(15, 's', charBand(4, 11, 'd', CHAR_EMPTY)));
+  const CHAR_PANTS = charBand(5, 10, 'p', CHAR_EMPTY);
+  const CHAR_PANTS_SPLIT = charBand(7, 8, 'q', CHAR_PANTS);
+  const CHAR_LEGS = charSet(6, 'p', charSet(9, 'p', CHAR_EMPTY));
+  const CHAR_BOOTS = charSet(6, 'b', charSet(9, 'b', CHAR_EMPTY));
+  const CHAR_BODY_ROWS = [
+    CHAR_FACE, CHAR_EYES, CHAR_FACE, CHAR_CHIN, CHAR_NECK,
+    CHAR_SHIRT_TOP, CHAR_SHIRT_WIDE, CHAR_ARMS, CHAR_ARMS_SHADE, CHAR_SHIRT_WIDE,
+    CHAR_PANTS, CHAR_PANTS_SPLIT, CHAR_LEGS, CHAR_LEGS, CHAR_BOOTS, CHAR_EMPTY,
+  ];
+
+  const HAIRSTYLES = {
+    corto: {
+      label: 'Corto',
+      top: [CHAR_EMPTY, CHAR_EMPTY, charBand(5, 10, 'h', CHAR_EMPTY), charBand(4, 11, 'h', CHAR_EMPTY)],
+      body: CHAR_BODY_ROWS,
+    },
+    puntas: {
+      label: 'Puntas',
+      top: [
+        charSet(5, 'h', charSet(8, 'h', charSet(11, 'h', CHAR_EMPTY))),
+        charBand(4, 5, 'h', charBand(7, 8, 'h', charBand(10, 11, 'h', CHAR_EMPTY))),
+        charBand(5, 10, 'h', CHAR_EMPTY),
+        charBand(4, 11, 'h', CHAR_EMPTY),
+      ],
+      body: CHAR_BODY_ROWS,
+    },
+    largo: {
+      label: 'Largo',
+      top: [CHAR_EMPTY, CHAR_EMPTY, charBand(5, 10, 'h', CHAR_EMPTY), charBand(4, 11, 'h', CHAR_EMPTY)],
+      body: CHAR_BODY_ROWS.map((r, i) => (i <= 4 ? charSet(3, 'h', charSet(12, 'h', r)) : r)),
+    },
+  };
+
+  const HAIR_COLORS = [
+    { id: 'negro', label: 'Negro', hex: '#2A2320' },
+    { id: 'castano', label: 'Castaño', hex: '#4A3322' },
+    { id: 'rubio', label: 'Rubio', hex: '#C9A24B' },
+    { id: 'rojo', label: 'Rojo', hex: '#A8432E' },
+    { id: 'celeste', label: 'Celeste', hex: '#4FC3F7' },
+    { id: 'verde', label: 'Verde', hex: '#3DDC84' },
+  ];
+
+  const TIER_OUTFITS = {
+    'tier0-novato': { outfit: '#8A8577', outfitDark: '#6E6A5D' },
+    'tier1-en-marcha': { outfit: '#3F6B4F', outfitDark: '#2E503A' },
+    'tier2-heroe': { outfit: '#2E5C8A', outfitDark: '#214466' },
+  };
+
+  const CHAR_PALETTE_BASE = { '.': null, k: '#0A0E17', s: '#E8B893', x: '#C99672', p: '#3A3F55', q: '#2A2E3E', b: '#0A0E17' };
+
+  function buildCharacterSVG(hairstyleId, hairColorHex, tierKey) {
+    const style = HAIRSTYLES[hairstyleId] || HAIRSTYLES.corto;
+    const outfit = TIER_OUTFITS[tierKey] || TIER_OUTFITS['tier0-novato'];
+    const palette = { ...CHAR_PALETTE_BASE, h: hairColorHex, o: outfit.outfit, d: outfit.outfitDark };
+    const grid = [...style.top, ...style.body];
+    const width = CHAR_COLS * CHAR_SCALE, height = CHAR_ROWS * CHAR_SCALE;
+    let rects = '';
+    grid.forEach((row, r) => {
+      row.forEach((ch, c) => {
+        const color = palette[ch];
+        if (!color) return;
+        rects += `<rect x="${c * CHAR_SCALE}" y="${r * CHAR_SCALE}" width="${CHAR_SCALE}" height="${CHAR_SCALE}" fill="${color}" />`;
+      });
+    });
+    return `<svg viewBox="0 0 ${width} ${height}">${rects}</svg>`;
+  }
+
+  const APPEARANCE_KEY = 'bitacora:appearance';
+  function loadAppearance() {
+    try {
+      const raw = localStorage.getItem(APPEARANCE_KEY);
+      if (raw) return { hairstyle: 'corto', hairColor: HAIR_COLORS[0].hex, ...JSON.parse(raw) };
+    } catch (e) {}
+    return { hairstyle: 'corto', hairColor: HAIR_COLORS[0].hex };
+  }
+  function persistAppearance(appearance) {
+    localStorage.setItem(APPEARANCE_KEY, JSON.stringify(appearance));
+    if (window.BitacoraSync) window.BitacoraSync.pushAppearance(appearance);
+    renderHome();
+  }
+
+  function renderCustomizeOptions() {
+    const appearance = loadAppearance();
+    document.getElementById('hairstyle-options').innerHTML = Object.entries(HAIRSTYLES).map(([id, s]) =>
+      `<button class="option-btn${id === appearance.hairstyle ? ' active' : ''}" data-hairstyle="${id}">${s.label}</button>`
+    ).join('');
+    document.getElementById('haircolor-options').innerHTML = HAIR_COLORS.map(c =>
+      `<button class="swatch${c.hex === appearance.hairColor ? ' active' : ''}" data-haircolor="${c.hex}" style="background:${c.hex}; color:${c.hex};" title="${c.label}" aria-label="${c.label}"></button>`
+    ).join('');
+
+    document.querySelectorAll('#hairstyle-options .option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = loadAppearance();
+        current.hairstyle = btn.dataset.hairstyle;
+        persistAppearance(current);
+      });
+    });
+    document.querySelectorAll('#haircolor-options .swatch').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const current = loadAppearance();
+        current.hairColor = btn.dataset.haircolor;
+        persistAppearance(current);
+      });
+    });
+  }
+
   const MISSIONS_KEY = 'bitacora:missions';
   function loadMissions() {
     try { return JSON.parse(localStorage.getItem(MISSIONS_KEY) || '{}'); } catch (e) { return {}; }
@@ -2150,7 +2334,9 @@
     document.getElementById('char-level').textContent = charLevel;
     document.getElementById('char-level-badge').textContent = charLevel;
     document.getElementById('char-title').textContent = tier.title;
-    document.getElementById('char-sprite').src = `sprites/${tier.key}.png`;
+    const appearance = loadAppearance();
+    document.getElementById('char-sprite').innerHTML = buildCharacterSVG(appearance.hairstyle, appearance.hairColor, tier.key);
+    renderCustomizeOptions();
     document.getElementById('str-xp-label').textContent = `Nv. ${strLevel} · ${rpg.strengthXp % XP_PER_LEVEL}/${XP_PER_LEVEL} XP`;
     document.getElementById('nut-xp-label').textContent = `Nv. ${nutLevel} · ${rpg.nutritionXp % XP_PER_LEVEL}/${XP_PER_LEVEL} XP`;
     document.getElementById('str-fill').style.width = (rpg.strengthXp % XP_PER_LEVEL) + '%';

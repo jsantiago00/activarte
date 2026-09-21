@@ -479,17 +479,51 @@
   }
   .meal-row .food-info.open{ display:block; }
 
-  .char-card{
+  .char-panel{
     display:flex;
-    justify-content:center;
+    align-items:center;
+    gap:16px;
     padding:18px 16px;
-    background-image: radial-gradient(circle at 50% 40%, var(--summary-soft), transparent 65%);
+    background-image: radial-gradient(circle at 30% 40%, var(--summary-soft), transparent 65%);
   }
-  .char-card img{
+  .char-portrait{
+    position:relative;
+    flex-shrink:0;
+    animation: char-breathe 3.5s ease-in-out infinite;
+  }
+  @keyframes char-breathe{
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(79,195,247,.25)); }
+    50% { filter: drop-shadow(0 0 20px rgba(79,195,247,.5)); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .char-portrait{ animation:none; }
+  }
+  .char-portrait img{
     image-rendering:pixelated;
     image-rendering:crisp-edges;
-    filter: drop-shadow(0 0 14px rgba(79,195,247,.25));
+    display:block;
+    width:96px;
+    height:120px;
   }
+  .char-level-badge{
+    position:absolute;
+    bottom:-4px;
+    right:-4px;
+    background:var(--gold);
+    color:var(--on-accent);
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:800;
+    font-size:16px;
+    width:28px;
+    height:28px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border:2px solid var(--panel-alt);
+    box-shadow:0 0 10px var(--gold);
+  }
+  .char-stats{ flex:1; min-width:0; }
   .stat-row{ margin-bottom:14px; }
   .stat-row:last-child{ margin-bottom:0; }
   .stat-label{
@@ -535,6 +569,55 @@
     text-decoration:line-through;
     color:var(--muted);
   }
+  .mission-row input:checked{
+    animation: check-pop .3s ease;
+  }
+  @keyframes check-pop{
+    0%{ transform:scale(1); }
+    50%{ transform:scale(1.35); }
+    100%{ transform:scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .mission-row input:checked{ animation:none; }
+  }
+
+  .quest-card{
+    background: linear-gradient(160deg, var(--panel-alt), var(--panel));
+    border:1px solid var(--gold);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-bottom:14px;
+    box-shadow: 0 0 18px -6px var(--gold);
+  }
+  .quest-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .quest-tag{
+    font-family:'Big Shoulders Display', sans-serif;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    color:var(--gold);
+  }
+  .quest-reward{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    font-weight:600;
+    background:var(--gold);
+    color:var(--on-accent);
+    padding:3px 9px;
+    border-radius:20px;
+  }
+  .quest-empty{
+    border-color:var(--border-bright);
+    box-shadow:none;
+    background:var(--panel-alt);
+  }
+  .quest-empty .quest-tag{ color:var(--muted); }
 
   .routine-row{
     display:flex;
@@ -686,7 +769,7 @@
   <div class="pages-wrap">
     <div class="page-area">
       <!-- PÁGINA: COMIDAS -->
-      <section class="page active" id="page-comidas">
+      <section class="page" id="page-comidas">
         <h2>Comidas</h2>
 
         <div class="date-nav">
@@ -819,31 +902,41 @@
       </section>
 
       <!-- PÁGINA: RESUMEN -->
-      <section class="page" id="page-resumen">
+      <section class="page active" id="page-resumen">
         <h2>Personaje</h2>
         <p class="date-label">Nivel <span id="char-level">1</span> — <span id="char-title">Novato</span></p>
 
-        <div class="card char-card">
-          <img id="char-sprite" src="sprites/tier0-novato.png" alt="Tu personaje" width="120" height="150">
+        <div class="card char-panel">
+          <div class="char-portrait">
+            <img id="char-sprite" src="sprites/tier0-novato.png" alt="Tu personaje" width="120" height="150">
+            <span class="char-level-badge" id="char-level-badge">1</span>
+          </div>
+          <div class="char-stats">
+            <div class="stat-row">
+              <div class="stat-label"><span>Fuerza</span><span id="str-xp-label">0/100 XP</span></div>
+              <div class="xp-bar"><div class="xp-fill" id="str-fill" style="width:0%;"></div></div>
+            </div>
+            <div class="stat-row">
+              <div class="stat-label"><span>Nutrición</span><span id="nut-xp-label">0/100 XP</span></div>
+              <div class="xp-bar"><div class="xp-fill nut" id="nut-fill" style="width:0%;"></div></div>
+            </div>
+          </div>
         </div>
 
-        <div class="card">
-          <div class="stat-row">
-            <div class="stat-label"><span>Fuerza</span><span>Nv. <span id="str-level">1</span></span></div>
-            <div class="xp-bar"><div class="xp-fill" id="str-fill" style="width:0%;"></div></div>
+        <div class="quest-card" id="mission-card" style="display:none;">
+          <div class="quest-header">
+            <span class="quest-tag">▸ Misión de hoy</span>
+            <span class="quest-reward" id="mission-reward">+20 XP</span>
           </div>
-          <div class="stat-row">
-            <div class="stat-label"><span>Nutrición</span><span>Nv. <span id="nut-level">1</span></span></div>
-            <div class="xp-bar"><div class="xp-fill nut" id="nut-fill" style="width:0%;"></div></div>
-          </div>
-        </div>
-
-        <div class="card" id="mission-card" style="display:none;">
-          <h3>Misión de hoy</h3>
           <label class="mission-row" id="mission-row-label">
             <input type="checkbox" id="mission-checkbox">
             <span id="mission-text"></span>
           </label>
+        </div>
+
+        <div class="quest-card quest-empty" id="mission-empty-card">
+          <span class="quest-tag">Sin misión activa</span>
+          <p class="note" style="margin-top:8px;">Anotá una comida, pedile feedback a Claude y cuando importes su respuesta con una línea "MISIÓN:" va a aparecer acá tu próxima quest.</p>
         </div>
 
         <div class="card">
@@ -904,9 +997,9 @@
     </div>
 
     <div class="tabs">
-      <div class="tab active" data-tab="comidas">Comidas</div>
+      <div class="tab active" data-tab="resumen">Personaje</div>
+      <div class="tab" data-tab="comidas">Comidas</div>
       <div class="tab" data-tab="rutina">Rutina</div>
-      <div class="tab" data-tab="resumen">Personaje</div>
       <div class="tab" data-tab="cuenta">Cuenta</div>
     </div>
   </div>
@@ -1818,24 +1911,30 @@
     const nutLevel = levelFromXp(rpg.nutritionXp);
     const tier = avatarTier((strLevel + nutLevel) / 2);
 
-    document.getElementById('char-level').textContent = Math.floor((strLevel + nutLevel) / 2);
+    const charLevel = Math.floor((strLevel + nutLevel) / 2);
+    document.getElementById('char-level').textContent = charLevel;
+    document.getElementById('char-level-badge').textContent = charLevel;
     document.getElementById('char-title').textContent = tier.title;
     document.getElementById('char-sprite').src = `sprites/${tier.key}.png`;
-    document.getElementById('str-level').textContent = strLevel;
-    document.getElementById('nut-level').textContent = nutLevel;
+    document.getElementById('str-xp-label').textContent = `Nv. ${strLevel} · ${rpg.strengthXp % XP_PER_LEVEL}/${XP_PER_LEVEL} XP`;
+    document.getElementById('nut-xp-label').textContent = `Nv. ${nutLevel} · ${rpg.nutritionXp % XP_PER_LEVEL}/${XP_PER_LEVEL} XP`;
     document.getElementById('str-fill').style.width = (rpg.strengthXp % XP_PER_LEVEL) + '%';
     document.getElementById('nut-fill').style.width = (rpg.nutritionXp % XP_PER_LEVEL) + '%';
 
     const missions = loadMissions();
     const todayMission = missions[dateKey(today)];
     const card = document.getElementById('mission-card');
+    const emptyCard = document.getElementById('mission-empty-card');
     if (todayMission) {
       card.style.display = 'block';
+      emptyCard.style.display = 'none';
+      document.getElementById('mission-reward').textContent = `+${XP_MISSION_DONE} XP`;
       document.getElementById('mission-text').textContent = todayMission.text;
       document.getElementById('mission-checkbox').checked = todayMission.done;
       document.getElementById('mission-row-label').classList.toggle('done', todayMission.done);
     } else {
       card.style.display = 'none';
+      emptyCard.style.display = 'block';
     }
   }
 

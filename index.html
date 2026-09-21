@@ -37,6 +37,7 @@
     --summary: #4FC3F7;
     --summary-soft: rgba(79,195,247,.16);
     --gold: #F2C94C;
+    --focus: #C792EA;
     --on-accent: #0A0E17;
   }
   *{box-sizing:border-box;}
@@ -619,6 +620,41 @@
   }
   .quest-empty .quest-tag{ color:var(--muted); }
 
+  .badge-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap:12px 8px;
+  }
+  .badge{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:5px;
+    text-align:center;
+  }
+  .badge-symbol{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    border:2px solid currentColor;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:17px;
+    background: var(--panel);
+  }
+  .badge.locked .badge-symbol{
+    border-color:var(--border);
+    color:var(--muted) !important;
+    background:var(--bg);
+    opacity:.6;
+  }
+  .badge-label{
+    font-size:9.5px;
+    color:var(--muted);
+    line-height:1.2;
+  }
+
   .routine-row{
     display:flex;
     justify-content:space-between;
@@ -940,11 +976,31 @@
         </div>
 
         <div class="card">
-          <div class="profile-grid">
-            <div><div class="val" id="summary-weight">—</div><div class="lbl">Peso (kg)</div></div>
-            <div><div class="val" id="summary-height">—</div><div class="lbl">Altura (m)</div></div>
-            <div><div class="val" id="summary-bmi">—</div><div class="lbl">IMC</div></div>
+          <h3 style="text-align:center;">Perfil de stats</h3>
+          <div id="stat-pentagon"></div>
+        </div>
+
+        <div class="quest-card" id="weekly-card">
+          <div class="quest-header">
+            <span class="quest-tag">▸ Reto semanal</span>
+            <span class="quest-reward" id="weekly-reward">+40 XP</span>
           </div>
+          <p class="note" id="weekly-text" style="margin-bottom:6px;">—</p>
+          <div class="xp-bar"><div class="xp-fill" id="weekly-fill" style="width:0%;"></div></div>
+        </div>
+
+        <div class="quest-card" id="monthly-card">
+          <div class="quest-header">
+            <span class="quest-tag" style="color:var(--focus);">▸ Reto mensual</span>
+            <span class="quest-reward" id="monthly-reward" style="background:var(--focus);">+100 XP</span>
+          </div>
+          <p class="note" id="monthly-text" style="margin-bottom:6px;">—</p>
+          <div class="xp-bar"><div class="xp-fill" id="monthly-fill" style="width:0%; background:var(--focus); box-shadow:0 0 8px var(--focus);"></div></div>
+        </div>
+
+        <div class="card" id="badges-card">
+          <h3>Insignias</h3>
+          <div class="badge-grid" id="badge-grid"></div>
         </div>
 
         <div class="card">
@@ -1805,9 +1861,6 @@
       document.getElementById('chip-weight').textContent = '— kg';
       document.getElementById('chip-height').textContent = '— m';
       document.getElementById('chip-goal').textContent = 'Completá tu perfil';
-      document.getElementById('summary-weight').textContent = '—';
-      document.getElementById('summary-height').textContent = '—';
-      document.getElementById('summary-bmi').textContent = '—';
       document.getElementById('profile-weight').value = '';
       document.getElementById('profile-height').value = '';
       document.getElementById('profile-goal').value = '';
@@ -1816,10 +1869,6 @@
     document.getElementById('chip-weight').textContent = `${p.weight} kg`;
     document.getElementById('chip-height').textContent = `${p.height} m`;
     document.getElementById('chip-goal').textContent = p.goal;
-    document.getElementById('summary-weight').textContent = p.weight;
-    document.getElementById('summary-height').textContent = p.height;
-    const bmi = p.height ? (p.weight / (p.height * p.height)) : 0;
-    document.getElementById('summary-bmi').textContent = bmi ? bmi.toFixed(1) : '—';
     document.getElementById('profile-weight').value = p.weight;
     document.getElementById('profile-height').value = p.height;
     document.getElementById('profile-goal').value = p.goal;
@@ -1845,6 +1894,8 @@
   const XP_SET_LOGGED = 5;
   const XP_MISSION_DONE = 20;
   const XP_REFLECTION_BONUS = 15;
+  const XP_WEEKLY_BONUS = 40;
+  const XP_MONTHLY_BONUS = 100;
 
   function loadRpg() {
     try {
@@ -1905,6 +1956,190 @@
     return { mission: m[1].trim(), cleaned: cleaned || text };
   }
 
+  // --- Pentágono de stats: 5 ejes derivados de datos reales, sin stat nuevo que trackear a mano ---
+  const PENTAGON_AXES = [
+    { key: 'strength', label: 'Fuerza', color: 'var(--gym)' },
+    { key: 'nutrition', label: 'Nutrición', color: 'var(--food)' },
+    { key: 'consistency', label: 'Constancia', color: 'var(--summary)' },
+    { key: 'discipline', label: 'Disciplina', color: 'var(--focus)' },
+    { key: 'progress', label: 'Progreso', color: 'var(--gold)' },
+  ];
+
+  function computeActiveDates() {
+    const dates = new Set();
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf('bitacora:meals:') === 0) {
+        try {
+          const list = JSON.parse(localStorage.getItem(key) || '[]');
+          if (list.length) dates.add(key.slice('bitacora:meals:'.length));
+        } catch (e) {}
+      }
+    }
+    loadWorkoutHistory().forEach(h => dates.add(dateKey(new Date(h.date))));
+    return dates;
+  }
+
+  function computeStreak() {
+    const activeDates = computeActiveDates();
+    const cursor = startOfDay(new Date());
+    if (!activeDates.has(dateKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+    let streak = 0;
+    while (activeDates.has(dateKey(cursor))) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  function computePentagonStats() {
+    const rpg = loadRpg();
+    const strengthLevel = levelFromXp(rpg.strengthXp);
+    const nutritionLevel = levelFromXp(rpg.nutritionXp);
+    const streak = computeStreak();
+    const missionEntries = Object.values(loadMissions());
+    const totalMissions = missionEntries.length;
+    const doneMissions = missionEntries.filter(m => m.done).length;
+
+    const strength = Math.min(100, strengthLevel * 10);
+    const nutrition = Math.min(100, nutritionLevel * 10);
+    const consistency = Math.min(100, streak * 8);
+    const discipline = totalMissions ? Math.round((doneMissions / totalMissions) * 100) : 50;
+    const progress = Math.round((strength + nutrition + consistency + discipline) / 4);
+    return { strength, nutrition, consistency, discipline, progress, streak };
+  }
+
+  function buildPentagonSVG(values) {
+    const size = 260, center = size / 2, maxR = 78, labelR = 104;
+    const angleFor = (i) => (-90 + i * 72) * Math.PI / 180;
+    const pointAt = (i, r) => {
+      const a = angleFor(i);
+      return [center + Math.cos(a) * r, center + Math.sin(a) * r];
+    };
+    const ringPolys = [0.25, 0.5, 0.75, 1].map(level => {
+      const pts = PENTAGON_AXES.map((_, i) => pointAt(i, maxR * level).join(',')).join(' ');
+      return `<polygon points="${pts}" fill="none" stroke="var(--border)" stroke-width="1" />`;
+    }).join('');
+    const spokes = PENTAGON_AXES.map((_, i) => {
+      const [x, y] = pointAt(i, maxR);
+      return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}" stroke="var(--border)" stroke-width="1" />`;
+    }).join('');
+    const dataPts = PENTAGON_AXES.map((axis, i) => {
+      const frac = Math.max(4, Math.min(100, values[axis.key])) / 100;
+      return pointAt(i, maxR * frac).join(',');
+    }).join(' ');
+    const labels = PENTAGON_AXES.map((axis, i) => {
+      const [x, y] = pointAt(i, labelR);
+      const cos = Math.cos(angleFor(i));
+      const anchor = cos > 0.25 ? 'start' : (cos < -0.25 ? 'end' : 'middle');
+      const dy = i === 0 ? -2 : ((i === 2 || i === 3) ? 10 : 3);
+      return `<text x="${x}" y="${y + dy}" text-anchor="${anchor}" font-family="IBM Plex Sans, sans-serif" font-size="11" font-weight="600" fill="${axis.color}">${axis.label}</text>`;
+    }).join('');
+    return `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:280px; display:block; margin:8px auto 0;">
+      ${ringPolys}${spokes}
+      <polygon points="${dataPts}" fill="rgba(79,195,247,.2)" stroke="var(--summary)" stroke-width="2" stroke-linejoin="round" />
+      ${labels}
+    </svg>`;
+  }
+
+  // --- Retos semanales/mensuales e insignias (privado por cuenta) ---
+  const CHALLENGES_KEY = 'bitacora:challenges';
+
+  function startOfWeek(date) {
+    const d = startOfDay(date);
+    const day = d.getDay();
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+    return d;
+  }
+  function weekKeyFor(date) { return dateKey(startOfWeek(date)); }
+  function monthKeyFor(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; }
+
+  function loadChallenges() {
+    try {
+      const raw = localStorage.getItem(CHALLENGES_KEY);
+      if (raw) return { weekly: {}, monthly: {}, badges: {}, ...JSON.parse(raw) };
+    } catch (e) {}
+    return { weekly: {}, monthly: {}, badges: {} };
+  }
+  function persistChallenges(state) {
+    localStorage.setItem(CHALLENGES_KEY, JSON.stringify(state));
+    if (window.BitacoraSync) window.BitacoraSync.pushChallenges(state);
+  }
+
+  function computeWeeklyProgress() {
+    const weekStart = startOfWeek(today);
+    const count = loadWorkoutHistory().filter(h => startOfDay(new Date(h.date)) >= weekStart).length;
+    return { progress: count, target: 3 };
+  }
+  function computeMonthlyProgress() {
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    let count = 0;
+    computeActiveDates().forEach(k => { if (parseDateKey(k) >= monthStart) count++; });
+    return { progress: count, target: 15 };
+  }
+
+  const BADGES = [
+    { id: 'racha3', label: 'Racha de 3', symbol: '▲', color: 'var(--gym)', check: (ctx) => ctx.streak >= 3 },
+    { id: 'nivel5', label: 'Nivel 5', symbol: '★', color: 'var(--gold)', check: (ctx) => ctx.charLevel >= 5 },
+    { id: 'semanal1', label: 'Reto semanal', symbol: '✓', color: 'var(--summary)', check: (ctx) => !!ctx.state.weekly.claimed },
+    { id: 'mensual1', label: 'Reto mensual', symbol: '✦', color: 'var(--focus)', check: (ctx) => !!ctx.state.monthly.claimed },
+    { id: 'disciplina80', label: 'Disciplina', symbol: '●', color: 'var(--food)', check: (ctx) => ctx.discipline >= 80 },
+  ];
+
+  // Calcula progreso, cobra la recompensa la primera vez que se cumple un reto (persiste el
+  // "claimed" ANTES de dar XP para no reentrar en un loop vía renderHome -> awardXp -> renderHome).
+  function renderChallenges() {
+    let state = loadChallenges();
+    const wKey = weekKeyFor(today);
+    const mKey = monthKeyFor(today);
+    if (state.weekly.weekKey !== wKey) state.weekly = { weekKey: wKey, claimed: false };
+    if (state.monthly.monthKey !== mKey) state.monthly = { monthKey: mKey, claimed: false };
+
+    const weekly = computeWeeklyProgress();
+    const monthly = computeMonthlyProgress();
+    const justClaimedWeekly = !state.weekly.claimed && weekly.progress >= weekly.target;
+    const justClaimedMonthly = !state.monthly.claimed && monthly.progress >= monthly.target;
+    if (justClaimedWeekly) state.weekly.claimed = true;
+    if (justClaimedMonthly) state.monthly.claimed = true;
+    if (justClaimedWeekly || justClaimedMonthly) persistChallenges(state);
+
+    document.getElementById('weekly-text').textContent =
+      `Entrenar ${weekly.target} veces esta semana (${Math.min(weekly.progress, weekly.target)}/${weekly.target})`;
+    document.getElementById('weekly-fill').style.width = Math.min(100, (weekly.progress / weekly.target) * 100) + '%';
+    document.getElementById('weekly-reward').textContent = state.weekly.claimed ? '✓ Cobrado' : `+${XP_WEEKLY_BONUS} XP`;
+
+    document.getElementById('monthly-text').textContent =
+      `Anotar comidas ${monthly.target} días este mes (${Math.min(monthly.progress, monthly.target)}/${monthly.target})`;
+    document.getElementById('monthly-fill').style.width = Math.min(100, (monthly.progress / monthly.target) * 100) + '%';
+    document.getElementById('monthly-reward').textContent = state.monthly.claimed ? '✓ Cobrado' : `+${XP_MONTHLY_BONUS} XP`;
+
+    if (justClaimedWeekly) awardXp('strength', XP_WEEKLY_BONUS);
+    if (justClaimedMonthly) awardXp('nutrition', XP_MONTHLY_BONUS);
+
+    return state;
+  }
+
+  function renderBadges(ctx) {
+    let state = loadChallenges();
+    let changed = false;
+    BADGES.forEach(b => {
+      if (!state.badges[b.id] && b.check({ ...ctx, state })) {
+        state.badges[b.id] = true;
+        changed = true;
+      }
+    });
+    if (changed) persistChallenges(state);
+
+    document.getElementById('badge-grid').innerHTML = BADGES.map(b => {
+      const unlocked = !!state.badges[b.id];
+      return `
+        <div class="badge${unlocked ? '' : ' locked'}" title="${b.label}">
+          <span class="badge-symbol" style="color:${unlocked ? b.color : ''};">${b.symbol}</span>
+          <span class="badge-label">${b.label}</span>
+        </div>`;
+    }).join('');
+  }
+
   function renderHome() {
     const rpg = loadRpg();
     const strLevel = levelFromXp(rpg.strengthXp);
@@ -1936,6 +2171,11 @@
       card.style.display = 'none';
       emptyCard.style.display = 'block';
     }
+
+    const pentagon = computePentagonStats();
+    document.getElementById('stat-pentagon').innerHTML = buildPentagonSVG(pentagon);
+    renderChallenges();
+    renderBadges({ streak: pentagon.streak, charLevel, discipline: pentagon.discipline });
   }
 
   document.getElementById('mission-checkbox').addEventListener('change', (e) => {

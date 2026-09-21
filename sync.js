@@ -59,6 +59,7 @@ async function init() {
         watchUserDoc('rpg', 'stats', 'bitacora:rpg', (data) => JSON.stringify(data || {}), window.refreshHome);
         watchUserDoc('rpg', 'missions', 'bitacora:missions', (data) => JSON.stringify(data || {}), window.refreshHome);
         watchUserDoc('rpg', 'challenges', 'bitacora:challenges', (data) => JSON.stringify(data || {}), window.refreshHome);
+        reconcileOnLogin();
       }
       state.authListeners.forEach((cb) => cb(user));
     });
@@ -122,6 +123,64 @@ function watchUserDoc(subcollection, docId, localKey, valueFn, refreshFn) {
       if (typeof refreshFn === 'function') refreshFn();
     }
   }, (err) => console.warn('[sync] onSnapshot', subcollection, err));
+}
+
+// Se corre una vez cada vez que se loguea en un dispositivo: si la nube todavía no tiene
+// nada para un tipo de dato (porque se creó localmente antes de loguearse, o en un
+// dispositivo donde nunca se llegó a sincronizar) pero este dispositivo sí tiene datos
+// reales guardados, los sube. Si la nube YA tiene algo, no se toca nada — gana la nube y
+// baja normal por los listeners de arriba. Así se cierra el hueco de "lo armé sin estar
+// logueado y nunca se subió a ningún lado".
+async function reconcileDocIfEmpty(subcollection, docId, localKey, buildPayload) {
+  try {
+    const ref = firestoreApi.doc(db, 'users', state.user.uid, subcollection, docId);
+    const snap = await firestoreApi.getDoc(ref);
+    if (snap.exists()) return;
+    const raw = localStorage.getItem(localKey);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    const isEmpty = Array.isArray(parsed) ? parsed.length === 0 : (!parsed || Object.keys(parsed).length === 0);
+    if (isEmpty) return;
+    await firestoreApi.setDoc(ref, buildPayload(parsed));
+  } catch (err) {
+    console.warn('[sync] reconcileDocIfEmpty', subcollection, docId, err);
+  }
+}
+
+async function reconcileCollectionIfEmpty(subcollection, localPrefix, buildPayload) {
+  try {
+    const colRef = firestoreApi.collection(db, 'users', state.user.uid, subcollection);
+    const snap = await firestoreApi.getDocs(colRef);
+    if (!snap.empty) return;
+    const writes = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.indexOf(localPrefix) === 0) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const docId = key.slice(localPrefix.length);
+        writes.push(firestoreApi.setDoc(firestoreApi.doc(db, 'users', state.user.uid, subcollection, docId), buildPayload(raw)));
+      }
+    }
+    await Promise.all(writes);
+  } catch (err) {
+    console.warn('[sync] reconcileCollectionIfEmpty', subcollection, err);
+  }
+}
+
+async function reconcileOnLogin() {
+  const ts = () => firestoreApi.serverTimestamp();
+  await Promise.all([
+    reconcileDocIfEmpty('routines', 'data', 'bitacora:routines', (list) => ({ list, updatedAt: ts() })),
+    reconcileDocIfEmpty('workoutHistory', 'data', 'bitacora:workoutHistory', (list) => ({ list, updatedAt: ts() })),
+    reconcileDocIfEmpty('profile', 'data', 'bitacora:profile', (obj) => ({ ...obj, updatedAt: ts() })),
+    reconcileDocIfEmpty('routineAnalysis', 'data', 'bitacora:routineAnalysis', (obj) => ({ ...obj, updatedAt: ts() })),
+    reconcileDocIfEmpty('rpg', 'stats', 'bitacora:rpg', (obj) => ({ ...obj, updatedAt: ts() })),
+    reconcileDocIfEmpty('rpg', 'missions', 'bitacora:missions', (obj) => ({ ...obj, updatedAt: ts() })),
+    reconcileDocIfEmpty('rpg', 'challenges', 'bitacora:challenges', (obj) => ({ ...obj, updatedAt: ts() })),
+    reconcileCollectionIfEmpty('meals', 'bitacora:meals:', (raw) => ({ list: JSON.parse(raw), updatedAt: ts() })),
+    reconcileCollectionIfEmpty('feedback', 'bitacora:feedback:', (raw) => ({ text: raw, updatedAt: ts() })),
+  ]);
 }
 
 async function pushMeals(dateKey, list) {

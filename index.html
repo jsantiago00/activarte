@@ -1663,8 +1663,9 @@
     const input = document.getElementById('routine-analysis-input');
     const text = input.value.trim();
     if (!text) return;
+    const isFirstAnalysis = !loadRoutineAnalysis();
     persistRoutineAnalysis({ text, savedAt: new Date().toISOString() });
-    awardXp('strength', XP_REFLECTION_BONUS);
+    if (isFirstAnalysis) awardXp('strength', XP_REFLECTION_BONUS);
     input.value = '';
     renderRoutineAnalysis();
   });
@@ -2352,6 +2353,7 @@
       document.getElementById('mission-reward').textContent = `+${XP_MISSION_DONE} XP`;
       document.getElementById('mission-text').textContent = todayMission.text;
       document.getElementById('mission-checkbox').checked = todayMission.done;
+      document.getElementById('mission-checkbox').disabled = todayMission.done;
       document.getElementById('mission-row-label').classList.toggle('done', todayMission.done);
     } else {
       card.style.display = 'none';
@@ -2364,14 +2366,23 @@
     renderBadges({ streak: pentagon.streak, charLevel, discipline: pentagon.discipline });
   }
 
+  // Una vez completada, la misión queda bloqueada — no se puede destildar ni volver a
+  // cobrar el XP. El guard de "mission.done" es lo que realmente cierra el exploit,
+  // el atributo disabled en el checkbox es solo la señal visual.
   document.getElementById('mission-checkbox').addEventListener('change', (e) => {
     const missions = loadMissions();
     const key = dateKey(today);
-    if (!missions[key]) return;
-    const wasDone = missions[key].done;
-    missions[key].done = e.target.checked;
+    const mission = missions[key];
+    if (!mission) return;
+    if (mission.done) {
+      e.target.checked = true;
+      e.target.disabled = true;
+      return;
+    }
+    if (!e.target.checked) return;
+    mission.done = true;
     persistMissions(missions);
-    if (e.target.checked && !wasDone) awardXp('nutrition', XP_MISSION_DONE);
+    awardXp('nutrition', XP_MISSION_DONE);
   });
 
   window.refreshHome = renderHome;
@@ -2423,11 +2434,12 @@
     const input = document.getElementById('feedback-input');
     const raw = input.value.trim();
     if (!raw) return;
+    const isFirstFeedbackForDay = !loadFeedback(selectedDate);
     const { mission, cleaned } = extractMissionLine(raw);
     saveFeedback(selectedDate, cleaned);
     if (window.BitacoraSync) window.BitacoraSync.pushFeedback(dateKey(selectedDate), cleaned);
     if (mission) addMissionFor(nextCalendarDay(selectedDate), mission);
-    awardXp('nutrition', XP_REFLECTION_BONUS);
+    if (isFirstFeedbackForDay) awardXp('nutrition', XP_REFLECTION_BONUS);
     input.value = '';
     renderFeedbackNote();
     syncPendingDayState(selectedDate);
@@ -2610,11 +2622,12 @@
         }
       } else {
         const dateObj = parseDateKey(item.ref);
+        const isFirstFeedbackForDay = !loadFeedback(dateObj);
         const { mission, cleaned } = extractMissionLine(answer);
         saveFeedback(dateObj, cleaned);
         if (window.BitacoraSync) window.BitacoraSync.pushFeedback(item.ref, cleaned);
         if (mission) addMissionFor(nextCalendarDay(dateObj), mission);
-        awardXp('nutrition', XP_REFLECTION_BONUS);
+        if (isFirstFeedbackForDay) awardXp('nutrition', XP_REFLECTION_BONUS);
       }
     }
 
